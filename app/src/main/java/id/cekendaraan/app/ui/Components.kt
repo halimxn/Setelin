@@ -695,7 +695,7 @@ fun BrandMark(modifier: Modifier = Modifier) {
     Row(modifier, verticalAlignment = Alignment.CenterVertically) {
         Box(Modifier.size(8.dp).clip(CircleShape).background(C.acc))
         Spacer(Modifier.width(8.dp))
-        Text("Cek Kendaraan", style = Type.Item.copy(fontWeight = FontWeight.W700))
+        Text("Setelin", style = Type.Item.copy(fontWeight = FontWeight.W700))
     }
 }
 
