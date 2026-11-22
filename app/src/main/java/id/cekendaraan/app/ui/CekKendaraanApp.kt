@@ -158,6 +158,8 @@ fun CekKendaraanApp(vm: GarageViewModel = viewModel()) {
                             onServiceMany = { serviceIds = it },
                             onUpdateOdometer = { odometerOpen = true },
                             onOpenGarage = { tab = 4 },
+                            onScanOdometer = { tab = 2 },
+                            onLogService = { openLog(null) },
                         )
 
                         1 -> HistoryScreen(

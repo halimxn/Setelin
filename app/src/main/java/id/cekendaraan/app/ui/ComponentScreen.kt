@@ -1,9 +1,7 @@
 package id.cekendaraan.app.ui
 
-import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.Animatable
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.layout.Arrangement
@@ -28,21 +26,13 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.outlined.Build
 import androidx.compose.material.icons.outlined.Description
-import androidx.compose.material.icons.automirrored.rounded.ArrowBack
-import androidx.compose.material.icons.rounded.Build
-import androidx.compose.material.icons.rounded.CalendarMonth
-import androidx.compose.material.icons.rounded.Info
-import androidx.compose.material.icons.rounded.KeyboardArrowDown
-import androidx.compose.material.icons.rounded.KeyboardArrowUp
 import androidx.compose.material.icons.rounded.Lightbulb
-import androidx.compose.material.icons.rounded.Schedule
-import androidx.compose.material.icons.rounded.Speed
-import androidx.compose.material3.AlertDialog
+import androidx.compose.material.icons.rounded.MoreVert
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -55,15 +45,15 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.text.SpanStyle
-import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.text.withStyle
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -72,11 +62,29 @@ import id.cekendaraan.app.data.Component
 import id.cekendaraan.app.data.Kind
 import id.cekendaraan.app.data.Prefs
 import id.cekendaraan.app.data.Seed
+import id.cekendaraan.app.domain.DueLimit
 import id.cekendaraan.app.domain.DueStatus
 import id.cekendaraan.app.ui.theme.C
+import id.cekendaraan.app.ui.theme.Gradients
+import id.cekendaraan.app.ui.theme.Type
 import kotlinx.coroutines.launch
+import java.time.LocalDate
+import java.time.temporal.ChronoUnit
+import kotlin.math.abs
 import kotlin.math.roundToInt
 
+/**
+ * Detail item (Layar 2) conforming strictly to docs/DESIGN.md & art/mockup-tema.html (Neon Cockpit):
+ * - Top bar (kembali · "Detail item" · menu opsi)
+ * - Cincin gauge (GaugeRing 176dp) dengan radial glow status, glyph 26dp, angka sisa (Display 36), dan satuan
+ * - Di bawah cincin: nama item (H1), kategori · kendaraan (Meta), dan StatusTag
+ * - Dua kartu mini berdampingan (Jarak & Waktu) dengan progress 5dp dan fraksi pemakaian
+ * - InfoCard (kunci-nilai: Estimasi ganti, Servis terakhir, Odometer saat servis, Interval)
+ * - Baris tip perawatan (lampu + saran pabrikan)
+ * - Riwayat servis (maksimal 3 servis terakhir dengan dot indicator)
+ * - Kartu catatan (Notes)
+ * - Bilah aksi bawah tetap (Ubah interval · Catat servis)
+ */
 @Composable
 fun ComponentDetailScreen(
     item: ComponentUi,
@@ -93,353 +101,491 @@ fun ComponentDetailScreen(
     val template = Seed.template(component.templateKey)
     val kind = Seed.kindOf(component.templateKey, component.category)
     val events = ui.eventsFor(component.id)
+    val vehicle = ui.vehicle
 
-    var page by rememberSaveable(component.id) { mutableStateOf(0) }
     var adjustOpen by rememberSaveable(component.id) { mutableStateOf(false) }
-    var kmText by rememberSaveable(component.id) { mutableStateOf(component.intervalKm?.toString().orEmpty()) }
-    var monthText by rememberSaveable(component.id) { mutableStateOf(component.intervalMonths?.toString().orEmpty()) }
     var note by rememberSaveable(component.id) { mutableStateOf(Prefs.note(context, component.id)) }
-    var confirmDelete by remember { mutableStateOf(false) }
 
-    val lastService = events.firstOrNull()?.event?.servicedOn?.let(Fmt::date)
+    val lastServiceEvent = events.firstOrNull()?.event
+    val lastServiceDate = lastServiceEvent?.servicedOn?.let(Fmt::date)
 
-    Column(
+    val vehicleOdo = vehicle?.odometerKm ?: 0
+    val usedKm = component.lastServiceOdo?.let { (vehicleOdo - it).coerceAtLeast(0) } ?: 0
+    val usedMonths = component.lastServiceOn?.let {
+        ChronoUnit.MONTHS.between(LocalDate.ofEpochDay(it), LocalDate.now()).toInt().coerceAtLeast(0)
+    } ?: 0
+
+    // Telemetry text for GaugeRing center
+    val (remainingVal, remainingUnit) = remember(due) {
+        when {
+            due.status == DueStatus.UNKNOWN -> "—" to "Belum ada catatan"
+            due.status == DueStatus.NONE -> "—" to "Tanpa interval"
+            due.remainingKm != null && (due.limit == DueLimit.KM || due.remainingDays == null) -> {
+                val km = due.remainingKm
+                if (km >= 0) Fmt.number(km) to "km lagi" else Fmt.number(abs(km)) to "km lewat"
+            }
+            due.remainingDays != null -> {
+                val days = due.remainingDays
+                if (days >= 0) "$days" to "hari lagi" else "${abs(days)}" to "hari lewat"
+            }
+            else -> "—" to "Tanpa interval"
+        }
+    }
+
+    val remainingRatio = remember(due) {
+        if (due.status == DueStatus.UNKNOWN || due.status == DueStatus.NONE) 1f
+        else (1f - due.ratio).coerceIn(0f, 1f)
+    }
+
+    val statusColor = statusColor(due.status)
+    val scrollState = rememberScrollState()
+
+    Box(
         Modifier
             .fillMaxSize()
-            .background(C.Bg)
-            .statusBarsPadding()
-            .imePadding(),
+            .background(C.bg),
     ) {
-        Box(Modifier.fillMaxWidth().height(64.dp).padding(horizontal = 8.dp)) {
-            IconButton(onClick = onBack, modifier = Modifier.align(Alignment.CenterStart)) {
-                Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = "Kembali", tint = C.Text)
-            }
-        }
         Column(
             Modifier
-                .weight(1f)
-                .verticalScroll(rememberScrollState())
-                .padding(horizontal = 20.dp),
+                .fillMaxSize()
+                .verticalScroll(scrollState)
+                .statusBarsPadding()
+                .imePadding(),
         ) {
-            Spacer(Modifier.height(12.dp))
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(componentIcon(component.icon), contentDescription = null, tint = C.Text, modifier = Modifier.size(60.dp))
-                Spacer(Modifier.width(18.dp))
-                Column(Modifier.weight(1f)) {
-                    Text(component.name, color = C.Text, fontSize = 23.sp, fontWeight = FontWeight.Bold, lineHeight = 28.sp)
-                    Spacer(Modifier.height(4.dp))
-                    Text(
-                        buildAnnotatedString {
-                            withStyle(SpanStyle(color = C.Muted)) {
-                                append(if (kind == Kind.PAPERWORK) "Terakhir diurus: " else "Servis terakhir: ")
+            // Top Bar
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 20.dp, vertical = 8.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                IconButton42(
+                    icon = Icons.AutoMirrored.Rounded.ArrowBack,
+                    contentDescription = "Kembali",
+                    onClick = onBack,
+                )
+                Text(
+                    text = "Detail item",
+                    style = Type.H2,
+                )
+                IconButton42(
+                    icon = Icons.Rounded.MoreVert,
+                    contentDescription = "Menu opsi",
+                    onClick = { adjustOpen = true },
+                )
+            }
+
+            Spacer(Modifier.height(10.dp))
+
+            // Hero: Gauge Ring, Name, Category, Status Tag
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 20.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+            ) {
+                GaugeRing(
+                    remainingValue = remainingVal,
+                    unitText = remainingUnit,
+                    remainingRatio = remainingRatio,
+                    statusColor = statusColor,
+                    iconKey = component.icon,
+                )
+
+                Spacer(Modifier.height(14.dp))
+
+                Text(
+                    text = component.name,
+                    style = Type.H1,
+                    textAlign = TextAlign.Center,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                )
+
+                Spacer(Modifier.height(4.dp))
+
+                val vehicleTitle = listOfNotNull(vehicle?.brand, vehicle?.model).filter { it.isNotBlank() }.joinToString(" ")
+                val metaDesc = if (vehicleTitle.isNotBlank()) "${categoryLabel(kind)} · $vehicleTitle" else categoryLabel(kind)
+                Text(
+                    text = metaDesc,
+                    style = Type.Meta.copy(color = C.t2),
+                    textAlign = TextAlign.Center,
+                )
+
+                Spacer(Modifier.height(10.dp))
+
+                StatusTag(
+                    status = due.status,
+                    customLabel = if (due.status == DueStatus.DUE) "Perlu dicek segera" else null,
+                )
+
+                Spacer(Modifier.height(22.dp))
+            }
+
+            // Pair of mini metric cards (Jarak & Waktu)
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 20.dp),
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
+            ) {
+                // Jarak Mini Card
+                Box(
+                    modifier = Modifier
+                        .weight(1f)
+                        .clip(RoundedCornerShape(20.dp))
+                        .background(C.s1)
+                        .padding(14.dp),
+                ) {
+                    Column {
+                        Text("Jarak", style = Type.Label, color = C.t3)
+                        Spacer(Modifier.height(4.dp))
+                        if (component.intervalKm != null && component.intervalKm > 0) {
+                            val kmPercent = (due.progressKm * 100).roundToInt().coerceIn(0, 999)
+                            Row(verticalAlignment = Alignment.Bottom) {
+                                Text(
+                                    text = "$kmPercent",
+                                    style = Type.Stat,
+                                    color = C.t1,
+                                )
+                                Spacer(Modifier.width(3.dp))
+                                Text(
+                                    text = "% terpakai",
+                                    style = Type.Caption.copy(fontWeight = FontWeight.W600, color = C.t3),
+                                    modifier = Modifier.padding(bottom = 1.dp),
+                                )
                             }
-                            withStyle(SpanStyle(color = C.Text)) { append(lastService ?: "Belum ada") }
-                        },
-                        fontSize = 16.sp,
+                            Spacer(Modifier.height(8.dp))
+                            val kmStatusColor = when {
+                                due.progressKm >= 1f -> C.bad
+                                due.progressKm >= 0.8f -> C.warn
+                                else -> C.ok
+                            }
+                            ProgressBar(progress = due.progressKm, color = kmStatusColor)
+                            Spacer(Modifier.height(6.dp))
+                            Text(
+                                text = "${Fmt.number(usedKm)} / ${Fmt.number(component.intervalKm)} km",
+                                style = Type.Caption.copy(color = C.t3),
+                                maxLines = 1,
+                                softWrap = false,
+                            )
+                        } else {
+                            Text(
+                                text = "Tidak dipantau",
+                                style = Type.Body.copy(color = C.t3),
+                                modifier = Modifier.padding(vertical = 12.dp),
+                            )
+                        }
+                    }
+                }
+
+                // Waktu Mini Card
+                Box(
+                    modifier = Modifier
+                        .weight(1f)
+                        .clip(RoundedCornerShape(20.dp))
+                        .background(C.s1)
+                        .padding(14.dp),
+                ) {
+                    Column {
+                        Text("Waktu", style = Type.Label, color = C.t3)
+                        Spacer(Modifier.height(4.dp))
+                        if (component.intervalMonths != null && component.intervalMonths > 0) {
+                            val timePercent = (due.progressTime * 100).roundToInt().coerceIn(0, 999)
+                            Row(verticalAlignment = Alignment.Bottom) {
+                                Text(
+                                    text = "$timePercent",
+                                    style = Type.Stat,
+                                    color = C.t1,
+                                )
+                                Spacer(Modifier.width(3.dp))
+                                Text(
+                                    text = "% terpakai",
+                                    style = Type.Caption.copy(fontWeight = FontWeight.W600, color = C.t3),
+                                    modifier = Modifier.padding(bottom = 1.dp),
+                                )
+                            }
+                            Spacer(Modifier.height(8.dp))
+                            val timeStatusColor = when {
+                                due.progressTime >= 1f -> C.bad
+                                due.progressTime >= 0.8f -> C.warn
+                                else -> C.ok
+                            }
+                            ProgressBar(progress = due.progressTime, color = timeStatusColor)
+                            Spacer(Modifier.height(6.dp))
+                            Text(
+                                text = "$usedMonths / ${component.intervalMonths} bulan",
+                                style = Type.Caption.copy(color = C.t3),
+                                maxLines = 1,
+                                softWrap = false,
+                            )
+                        } else {
+                            Text(
+                                text = "Tidak dipantau",
+                                style = Type.Body.copy(color = C.t3),
+                                modifier = Modifier.padding(vertical = 12.dp),
+                            )
+                        }
+                    }
+                }
+            }
+
+            Spacer(Modifier.height(10.dp))
+
+            // Key-Value InfoCard
+            Box(Modifier.padding(horizontal = 20.dp)) {
+                InfoCard(
+                    items = listOf(
+                        InfoRowItem(
+                            label = "Estimasi ganti",
+                            value = due.dueDate?.let { Fmt.monthYearShort(it) } ?: "—",
+                        ),
+                        InfoRowItem(
+                            label = if (kind == Kind.PAPERWORK) "Terakhir diurus" else "Servis terakhir",
+                            value = lastServiceDate ?: "Belum ada",
+                        ),
+                        InfoRowItem(
+                            label = "Odometer saat servis",
+                            value = component.lastServiceOdo?.let { "${Fmt.number(it)} km" } ?: "—",
+                        ),
+                        InfoRowItem(
+                            label = "Interval",
+                            value = Fmt.interval(component.intervalKm, component.intervalMonths),
+                        ),
+                    ),
+                )
+            }
+
+            // Tip line (Saran perawatan)
+            val tip = template?.tip?.takeIf { it.isNotBlank() }
+            if (tip != null) {
+                Spacer(Modifier.height(14.dp))
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 24.dp),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                    verticalAlignment = Alignment.Top,
+                ) {
+                    Icon(
+                        imageVector = Icons.Rounded.Lightbulb,
+                        contentDescription = null,
+                        tint = C.acc,
+                        modifier = Modifier
+                            .size(18.dp)
+                            .padding(top = 2.dp),
+                    )
+                    Text(
+                        text = tip,
+                        style = Type.Meta.copy(color = C.t2, lineHeight = 20.sp),
                     )
                 }
             }
-            Spacer(Modifier.height(24.dp))
-            SegmentedControl(
-                options = listOf("Saat Ini", "Riwayat"),
-                selected = page,
-                onSelect = { page = it },
-                height = 44.dp,
-                fontSize = 16,
-                modifier = Modifier.fillMaxWidth(),
-            )
+
             Spacer(Modifier.height(20.dp))
 
-            if (page == 0) {
-                val tip = template?.tip?.takeIf { it.isNotEmpty() }
-                if (tip != null) {
-                    Column(
-                        Modifier
-                            .fillMaxWidth()
-                            .clip(RoundedCornerShape(24.dp))
-                            .background(C.Surface)
-                            .border(1.dp, C.LineStrong, RoundedCornerShape(24.dp))
-                            .padding(horizontal = 18.dp, vertical = 16.dp),
-                    ) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(Icons.Rounded.Lightbulb, contentDescription = null, tint = C.Blue, modifier = Modifier.size(24.dp))
-                            Spacer(Modifier.width(12.dp))
-                            Text("Saran perawatan", color = C.Blue, fontSize = 15.sp, fontWeight = FontWeight.Bold)
-                        }
-                        Spacer(Modifier.height(10.dp))
-                        Text(tip, color = C.Muted, fontSize = 14.sp, lineHeight = 19.sp)
-                    }
-                    Spacer(Modifier.height(18.dp))
-                }
-
-                Column(
-                    Modifier
-                        .fillMaxWidth()
-                        .clip(RoundedCornerShape(28.dp))
-                        .background(C.Surface)
-                        .padding(horizontal = 16.dp, vertical = 20.dp),
+            // Riwayat Servis (maks 3 item)
+            Column(Modifier.padding(horizontal = 20.dp)) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    if (due.status == DueStatus.UNKNOWN) {
-                        Text("Belum ada data servis", color = C.Text, fontSize = 18.sp, fontWeight = FontWeight.SemiBold)
-                        Spacer(Modifier.height(6.dp))
+                    Text(
+                        text = "Riwayat",
+                        style = Type.H2,
+                    )
+                    if (events.isNotEmpty()) {
                         Text(
-                            "Catat kapan terakhir diservis supaya sisa pakainya bisa dihitung.",
-                            color = C.Muted,
-                            fontSize = 15.sp,
-                            lineHeight = 21.sp,
+                            text = "Tambah lama",
+                            style = Type.Small.copy(fontWeight = FontWeight.W700, color = C.acc),
+                            modifier = Modifier
+                                .clip(CircleShape)
+                                .clickable(onClick = onAddPastService)
+                                .padding(horizontal = 8.dp, vertical = 4.dp),
                         )
-                    } else {
-                        var first = true
-                        if (component.intervalKm != null && due.remainingKm != null) {
-                            val left = 1f - due.progressKm
-                            UsageLine(
-                                icon = null,
-                                label = "Sisa Pakai:",
-                                value = if (due.remainingKm >= 0) {
-                                    "${Fmt.number(due.remainingKm)} km"
-                                } else {
-                                    "Lewat ${Fmt.number(-due.remainingKm)} km"
-                                },
-                                left = left,
-                            )
-                            first = false
-                        }
-                        if (component.intervalMonths != null && due.dueDate != null) {
-                            if (!first) {
-                                Spacer(Modifier.height(24.dp))
-                                HorizontalDivider(color = C.LineStrong)
-                                Spacer(Modifier.height(24.dp))
-                            }
-                            val days = due.remainingDays ?: 0
-                            UsageLine(
-                                icon = Icons.Rounded.CalendarMonth,
-                                label = "Sampai",
-                                value = "${Fmt.date(due.dueDate)} · ${days} hr",
-                                left = 1f - due.progressTime,
-                            )
-                        }
-                        Spacer(Modifier.height(16.dp))
-                        Row {
-                            Icon(Icons.Rounded.Info, contentDescription = null, tint = C.Muted, modifier = Modifier.size(22.dp))
-                            Spacer(Modifier.width(12.dp))
-                            Text(
-                                "Beranda menampilkan yang lebih dulu habis dari kedua ukuran ini untuk menentukan kondisi.",
-                                color = C.Muted,
-                                fontSize = 13.sp,
-                                lineHeight = 18.sp,
-                            )
-                        }
-                    }
-                    Spacer(Modifier.height(18.dp))
-                    Row(
-                        Modifier
-                            .fillMaxWidth()
-                            .height(44.dp)
-                            .clip(CircleShape)
-                            .background(C.Surface2)
-                            .clickable { adjustOpen = !adjustOpen },
-                        horizontalArrangement = Arrangement.Center,
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        Text("Atur Umur Pakai", color = C.Blue, fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
-                        Spacer(Modifier.width(10.dp))
-                        Icon(
-                            if (adjustOpen) Icons.Rounded.KeyboardArrowUp else Icons.Rounded.KeyboardArrowDown,
-                            contentDescription = null,
-                            tint = C.Blue,
-                        )
-                    }
-                    AnimatedVisibility(adjustOpen) {
-                        Column {
-                            Spacer(Modifier.height(4.dp))
-                            if (kind != Kind.PAPERWORK) {
-                                IntervalRow(
-                                    title = "Interval Jarak (km)",
-                                    hint = template?.km?.let { "Rekomendasi: ${Fmt.number(it)} km" } ?: "Kosongkan bila tidak dipakai",
-                                    value = kmText,
-                                    onValue = { kmText = it },
-                                )
-                                HorizontalDivider(color = C.LineStrong)
-                            }
-                            IntervalRow(
-                                title = "Interval Waktu (Bulan)",
-                                hint = template?.months?.let { "Rekomendasi: Tiap $it bulan" } ?: "Kosongkan bila tidak dipakai",
-                                value = monthText,
-                                onValue = { monthText = it },
-                            )
-                            val km = kmText.toIntOrNull()?.takeIf { it > 0 }
-                            val months = monthText.toIntOrNull()?.takeIf { it > 0 }
-                            Spacer(Modifier.height(8.dp))
-                            PrimaryButton(
-                                text = "Simpan Umur Pakai",
-                                enabled = km != null || months != null,
-                                onClick = {
-                                    onSave(component.copy(intervalKm = km, intervalMonths = months))
-                                    adjustOpen = false
-                                },
-                            )
-                            TextButton(onClick = { confirmDelete = true }, modifier = Modifier.fillMaxWidth()) {
-                                Text("Hapus dari daftar", color = C.Red, fontSize = 15.sp, fontWeight = FontWeight.SemiBold)
-                            }
-                        }
                     }
                 }
-                Spacer(Modifier.height(18.dp))
 
-                Column(
-                    Modifier
+                Spacer(Modifier.height(10.dp))
+
+                Box(
+                    modifier = Modifier
                         .fillMaxWidth()
-                        .clip(RoundedCornerShape(28.dp))
-                        .background(C.Surface)
+                        .clip(RoundedCornerShape(20.dp))
+                        .background(C.s1)
                         .padding(16.dp),
                 ) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(Icons.Outlined.Description, contentDescription = null, tint = C.Muted, modifier = Modifier.size(24.dp))
-                        Spacer(Modifier.width(14.dp))
-                        Text("Catatan", color = C.Text, fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
-                    }
-                    Spacer(Modifier.height(14.dp))
-                    Box(
-                        Modifier
-                            .fillMaxWidth()
-                            .height(84.dp)
-                            .clip(RoundedCornerShape(18.dp))
-                            .background(C.Bg)
-                            .padding(horizontal = 16.dp, vertical = 14.dp),
-                    ) {
-                        if (note.isEmpty()) {
-                            Text("Tambahkan catatan tentang komponen ini…", color = C.Muted2, fontSize = 15.sp)
-                        }
-                        BasicTextField(
-                            value = note,
-                            onValueChange = {
-                                note = it.take(300)
-                                Prefs.setNote(context, component.id, note)
-                            },
-                            textStyle = androidx.compose.ui.text.TextStyle(color = C.Text, fontSize = 15.sp),
-                            cursorBrush = androidx.compose.ui.graphics.SolidColor(C.Blue),
-                            modifier = Modifier.fillMaxSize(),
-                        )
-                    }
-                }
-                Spacer(Modifier.height(20.dp))
-            } else {
-                if (events.isEmpty()) {
-                    Spacer(Modifier.height(40.dp))
-                    EmptyState(
-                        icon = Icons.Rounded.Schedule,
-                        title = "Belum Ada Riwayat",
-                        message = "Item ini belum pernah diservis.",
-                        actionLabel = "Tambah Servis Lama",
-                        onAction = onAddPastService,
-                    )
-                } else {
-                    events.forEach { record ->
-                        Row(
-                            Modifier
+                    if (events.isEmpty()) {
+                        Column(
+                            modifier = Modifier
                                 .fillMaxWidth()
-                                .padding(bottom = 12.dp)
-                                .clip(RoundedCornerShape(24.dp))
-                                .background(C.Surface)
-                                .padding(18.dp),
-                            verticalAlignment = Alignment.CenterVertically,
+                                .padding(vertical = 12.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally,
                         ) {
-                            Box(
-                                Modifier.size(44.dp).clip(CircleShape).background(C.BlueSoft),
-                                contentAlignment = Alignment.Center,
-                            ) {
-                                Icon(Icons.Rounded.Build, contentDescription = null, tint = C.Blue, modifier = Modifier.size(22.dp))
-                            }
-                            Spacer(Modifier.width(14.dp))
-                            Column(Modifier.weight(1f)) {
-                                Text(Fmt.date(record.event.servicedOn), color = C.Text, fontSize = 17.sp, fontWeight = FontWeight.SemiBold)
-                                Spacer(Modifier.height(2.dp))
-                                Row(verticalAlignment = Alignment.CenterVertically) {
-                                    Icon(Icons.Rounded.Speed, contentDescription = null, tint = C.Muted, modifier = Modifier.size(15.dp))
-                                    Spacer(Modifier.width(4.dp))
-                                    Text("${Fmt.number(record.event.odometerKm)} km", color = C.Muted, fontSize = 14.sp)
-                                    record.event.cost?.let {
-                                        Text("  ·  ${Fmt.money(it)}", color = C.Muted, fontSize = 14.sp)
+                            Text(
+                                text = "Belum ada riwayat servis untuk item ini.",
+                                style = Type.Meta.copy(color = C.t3),
+                                textAlign = TextAlign.Center,
+                            )
+                            Spacer(Modifier.height(10.dp))
+                            SecondaryButton(
+                                text = "＋ Tambah servis lama",
+                                onClick = onAddPastService,
+                                modifier = Modifier.width(200.dp),
+                            )
+                        }
+                    } else {
+                        val recentEvents = events.take(3)
+                        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                            recentEvents.forEachIndexed { idx, record ->
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                                ) {
+                                    // Indicator dot (8dp)
+                                    Box(
+                                        modifier = Modifier
+                                            .size(8.dp)
+                                            .clip(CircleShape)
+                                            .background(if (idx == 0) C.acc else C.s3),
+                                    )
+                                    Column(modifier = Modifier.weight(1f)) {
+                                        Text(
+                                            text = record.event.note.ifBlank { "Servis ${component.name}" },
+                                            style = Type.Item,
+                                            maxLines = 1,
+                                            overflow = TextOverflow.Ellipsis,
+                                        )
+                                        Spacer(Modifier.height(2.dp))
+                                        Text(
+                                            text = "${Fmt.date(record.event.servicedOn)} · ${Fmt.number(record.event.odometerKm)} km",
+                                            style = Type.Caption.copy(color = C.t3),
+                                        )
                                     }
+                                    if (record.event.cost != null && record.event.cost > 0) {
+                                        Text(
+                                            text = Fmt.money(record.event.cost),
+                                            style = Type.Small.copy(fontWeight = FontWeight.W700, color = C.t1),
+                                        )
+                                    }
+                                }
+                                if (idx < recentEvents.lastIndex) {
+                                    HorizontalDivider(color = C.div, thickness = 1.dp)
                                 }
                             }
                         }
                     }
-                    Spacer(Modifier.height(4.dp))
-                    SecondaryButton("Tambah Servis Lama", onAddPastService)
-                    Spacer(Modifier.height(20.dp))
                 }
             }
-        }
-        if (page == 0) {
-            Box(
-                Modifier
-                    .navigationBarsPadding()
-                    .padding(start = 20.dp, end = 20.dp, top = 8.dp, bottom = 16.dp),
-            ) {
-                if (due.status == DueStatus.UNKNOWN) {
-                    PrimaryButton(text = "Catat Servis Terakhir", onClick = onAddPastService)
-                } else {
-                    PrimaryButton(
-                        text = if (kind == Kind.PAPERWORK) "Tandai Sudah Diurus" else "Servis Komponen",
-                        onClick = onService,
-                    )
+
+            Spacer(Modifier.height(14.dp))
+
+            // Catatan (Notes)
+            Box(Modifier.padding(horizontal = 20.dp)) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(20.dp))
+                        .background(C.s1)
+                        .padding(16.dp),
+                ) {
+                    Column {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(
+                                imageVector = Icons.Outlined.Description,
+                                contentDescription = null,
+                                tint = C.t3,
+                                modifier = Modifier.size(18.dp),
+                            )
+                            Spacer(Modifier.width(8.dp))
+                            Text("Catatan", style = Type.Item)
+                        }
+                        Spacer(Modifier.height(10.dp))
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(80.dp)
+                                .clip(RoundedCornerShape(14.dp))
+                                .background(C.s2)
+                                .padding(12.dp),
+                        ) {
+                            if (note.isEmpty()) {
+                                Text(
+                                    text = "Tambahkan catatan untuk item ini...",
+                                    style = Type.Body.copy(color = C.t3),
+                                )
+                            }
+                            BasicTextField(
+                                value = note,
+                                onValueChange = {
+                                    note = it.take(300)
+                                    Prefs.setNote(context, component.id, note)
+                                },
+                                textStyle = Type.Body.copy(color = C.t1),
+                                cursorBrush = SolidColor(C.acc),
+                                modifier = Modifier.fillMaxSize(),
+                            )
+                        }
+                    }
                 }
+            }
+
+            // Bottom clearance for the fixed action bar
+            Spacer(Modifier.height(120.dp))
+        }
+
+        // Fixed Action Bar at Bottom (Ubah interval · Catat servis)
+        Box(
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .fillMaxWidth()
+                .background(
+                    Brush.verticalGradient(
+                        0.0f to Color.Transparent,
+                        0.38f to C.bg.copy(alpha = 0.90f),
+                        1.0f to C.bg,
+                    ),
+                )
+                .navigationBarsPadding()
+                .padding(start = 20.dp, end = 20.dp, top = 28.dp, bottom = 18.dp),
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
+            ) {
+                SecondaryButton(
+                    text = "Ubah interval",
+                    onClick = { adjustOpen = true },
+                    modifier = Modifier.weight(1f),
+                )
+                PrimaryButton(
+                    text = if (kind == Kind.PAPERWORK) "Tandai diurus" else "Catat servis",
+                    onClick = onService,
+                    modifier = Modifier.weight(1f),
+                )
             }
         }
     }
 
-    if (confirmDelete) {
-        AlertDialog(
-            onDismissRequest = { confirmDelete = false },
-            containerColor = C.Surface,
-            shape = RoundedCornerShape(28.dp),
-            title = { Text("Hapus ${component.name}?", color = C.Text, fontWeight = FontWeight.Bold) },
-            text = {
-                Text(
-                    "Item berhenti dipantau. Riwayat servis yang sudah dicatat tetap tersimpan.",
-                    color = C.Muted,
-                )
+    if (adjustOpen) {
+        IntervalAdjustSheet(
+            item = item,
+            onDismiss = { adjustOpen = false },
+            onSave = { km, months ->
+                onSave(component.copy(intervalKm = km, intervalMonths = months))
             },
-            confirmButton = {
-                TextButton(onClick = {
-                    confirmDelete = false
-                    onDelete()
-                }) { Text("Hapus", color = C.Red, fontWeight = FontWeight.Bold) }
-            },
-            dismissButton = {
-                TextButton(onClick = { confirmDelete = false }) { Text("Batal", color = C.Muted) }
-            },
+            onDelete = onDelete,
         )
     }
 }
 
-@Composable
-private fun UsageLine(
-    icon: androidx.compose.ui.graphics.vector.ImageVector?,
-    label: String,
-    value: String,
-    left: Float,
-) {
-    val fraction = left.coerceIn(0f, 1f)
-    val color = when {
-        fraction <= 0f -> C.Red
-        fraction <= 0.2f -> C.Amber
-        else -> C.Green
-    }
-    Row(verticalAlignment = Alignment.CenterVertically) {
-        if (icon != null) {
-            Icon(icon, contentDescription = null, tint = C.Muted, modifier = Modifier.size(18.dp))
-            Spacer(Modifier.width(8.dp))
-        }
-        Text(label, color = C.Muted, fontSize = 13.sp)
-        Spacer(Modifier.width(6.dp))
-        Text(value, color = C.Text, fontSize = 16.sp, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f), maxLines = 1)
-        Spacer(Modifier.width(8.dp))
-        Text("${(fraction * 100).roundToInt()}%", color = C.Muted, fontSize = 15.sp, fontWeight = FontWeight.SemiBold)
-    }
-    Spacer(Modifier.height(10.dp))
-    ProgressLine(fraction, color, height = 6)
+private fun categoryLabel(kind: Kind): String = when (kind) {
+    Kind.COMPONENT -> "Komponen"
+    Kind.TREATMENT -> "Perawatan"
+    Kind.PAPERWORK -> "Dokumen"
 }
 
 /** Confirmation with a slide-to-confirm control, like a physical switch. */
@@ -449,31 +595,37 @@ fun SlideToServiceDialog(names: List<String>, onDismiss: () -> Unit, onConfirm: 
         Column(
             Modifier
                 .fillMaxWidth()
-                .clip(RoundedCornerShape(34.dp))
-                .background(C.Surface)
-                .padding(horizontal = 24.dp, vertical = 30.dp),
+                .clip(RoundedCornerShape(28.dp))
+                .background(C.s1)
+                .padding(horizontal = 24.dp, vertical = 28.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
-            Text("Servis Komponen?", color = C.Text, fontSize = 22.sp, fontWeight = FontWeight.Bold)
-            Spacer(Modifier.height(12.dp))
+            Text("Servis komponen?", style = Type.H1, textAlign = TextAlign.Center)
+            Spacer(Modifier.height(10.dp))
             Text(
                 "Yakin ingin menandai item ini sudah diservis hari ini?",
-                color = C.Muted,
-                fontSize = 15.sp,
-                lineHeight = 21.sp,
+                style = Type.Body.copy(color = C.t2),
                 textAlign = TextAlign.Center,
             )
-            Spacer(Modifier.height(22.dp))
-            Text("Komponen:", color = C.Muted, fontSize = 15.sp)
-            Spacer(Modifier.height(8.dp))
-            names.forEach {
-                Text("- $it", color = C.Text, fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
-            }
-            Spacer(Modifier.height(32.dp))
-            SlideToConfirm(label = "Geser untuk Servis", onConfirm = onConfirm)
             Spacer(Modifier.height(18.dp))
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(16.dp))
+                    .background(C.s2)
+                    .padding(14.dp),
+            ) {
+                Text("Daftar komponen:", style = Type.Label, color = C.t3)
+                Spacer(Modifier.height(6.dp))
+                names.forEach {
+                    Text("• $it", style = Type.Item, color = C.t1)
+                }
+            }
+            Spacer(Modifier.height(24.dp))
+            SlideToConfirm(label = "Geser untuk catat", onConfirm = onConfirm)
+            Spacer(Modifier.height(14.dp))
             TextButton(onClick = onDismiss) {
-                Text("Batal", color = C.Muted, fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
+                Text("Batal", style = Type.Button.copy(color = C.t2))
             }
         }
     }
@@ -487,18 +639,16 @@ private fun SlideToConfirm(label: String, onConfirm: () -> Unit) {
     BoxWithConstraints(
         Modifier
             .fillMaxWidth()
-            .height(64.dp)
+            .height(58.dp)
             .clip(CircleShape)
-            .background(C.Surface2),
+            .background(C.s2),
     ) {
-        val knob = 56.dp
+        val knob = 50.dp
         val maxPx = with(density) { (maxWidth - knob - 8.dp).toPx() }
         Text(
-            label,
-            color = C.Blue.copy(alpha = (1f - offset.value / maxPx.coerceAtLeast(1f)).coerceIn(0.2f, 1f)),
-            fontSize = 16.sp,
-            fontWeight = FontWeight.SemiBold,
-            modifier = Modifier.align(Alignment.Center).padding(start = 48.dp),
+            text = label,
+            style = Type.Button.copy(color = C.t2),
+            modifier = Modifier.align(Alignment.Center).padding(start = 32.dp),
         )
         Box(
             Modifier
@@ -506,7 +656,7 @@ private fun SlideToConfirm(label: String, onConfirm: () -> Unit) {
                 .offset { IntOffset(offset.value.roundToInt(), 0) }
                 .size(knob)
                 .clip(CircleShape)
-                .background(C.BlueButton)
+                .background(Gradients.Accent)
                 .pointerInput(maxPx) {
                     detectHorizontalDragGestures(
                         onDragEnd = {
@@ -526,7 +676,12 @@ private fun SlideToConfirm(label: String, onConfirm: () -> Unit) {
                 },
             contentAlignment = Alignment.Center,
         ) {
-            Icon(Icons.Outlined.Build, contentDescription = "Geser", tint = C.OnAccent, modifier = Modifier.size(26.dp))
+            Icon(
+                imageVector = Icons.Outlined.Build,
+                contentDescription = "Geser",
+                tint = C.ink,
+                modifier = Modifier.size(22.dp),
+            )
         }
     }
 }

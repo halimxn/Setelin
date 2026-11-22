@@ -538,6 +538,79 @@ fun ItemRow(
 }
 
 /**
+ * Attention card (Perlu perhatian):
+ * - Highlight gradient (statusHighlight) from status color (14-18% alpha) fading to s1 at 75%
+ * - Radius 20dp, padding 14dp, NO border
+ * - Left: 44dp icon well with status color 13% alpha + icon
+ * - Right: Name (Item, 15/600) + StatusTag (pill 12/700)
+ * - Bottom: Meta explanation (13/500, t2)
+ */
+@Composable
+fun AttentionCard(
+    title: String,
+    subtitle: String,
+    iconKey: String,
+    status: DueStatus,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val color = statusColor(status)
+
+    Box(
+        modifier = modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(20.dp))
+            .background(Gradients.statusHighlight(color))
+            .clickable(onClick = onClick)
+            .padding(14.dp),
+    ) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(14.dp),
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(44.dp)
+                    .clip(RoundedCornerShape(14.dp))
+                    .background(color.copy(alpha = 0.13f)),
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(
+                    imageVector = componentIcon(iconKey),
+                    contentDescription = null,
+                    tint = color,
+                    modifier = Modifier.size(22.dp),
+                )
+            }
+            Column(modifier = Modifier.weight(1f)) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text(
+                        text = title,
+                        style = Type.Item,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.weight(1f, fill = false),
+                    )
+                    Spacer(Modifier.width(8.dp))
+                    StatusTag(status = status)
+                }
+                Spacer(Modifier.height(4.dp))
+                Text(
+                    text = subtitle,
+                    style = Type.Meta,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
+        }
+    }
+}
+
+/**
  * Key-Value info item inside InfoCard.
  */
 data class InfoRowItem(

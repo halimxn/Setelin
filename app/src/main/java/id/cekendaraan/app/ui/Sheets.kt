@@ -1,23 +1,32 @@
 package id.cekendaraan.app.ui
 
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material.icons.rounded.CalendarMonth
+import androidx.compose.material.icons.rounded.Close
+import androidx.compose.material.icons.rounded.Search
 import androidx.compose.material.icons.rounded.Speed
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ButtonDefaults
@@ -45,14 +54,21 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import id.cekendaraan.app.data.ComponentTemplate
+import id.cekendaraan.app.data.Kind
+import id.cekendaraan.app.data.Seed
 import id.cekendaraan.app.data.Vehicle
 import id.cekendaraan.app.domain.DueStatus
 import id.cekendaraan.app.ui.theme.C
+import id.cekendaraan.app.ui.theme.Type
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneOffset
@@ -485,5 +501,359 @@ fun LogServiceSheet(
         ) {
             DatePicker(picker)
         }
+    }
+}
+
+/**
+ * Bottom sheet to browse and search untracked templates or add custom items.
+ * Replaces the old dashboard grid template catalog.
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun TambahItemSheet(
+    ui: UiState,
+    onDismiss: () -> Unit,
+    onSelectTemplate: (String) -> Unit,
+    onCustom: (Kind) -> Unit,
+) {
+    var query by rememberSaveable { mutableStateOf("") }
+    var selectedKindIdx by rememberSaveable { mutableStateOf(0) } // 0: Semua, 1: Komponen, 2: Perawatan, 3: Dokumen
+
+    val targetKind = when (selectedKindIdx) {
+        1 -> Kind.COMPONENT
+        2 -> Kind.TREATMENT
+        3 -> Kind.PAPERWORK
+        else -> null
+    }
+
+    val trackedKeys = remember(ui.components) {
+        ui.components.map { it.component.templateKey }.toSet()
+    }
+
+    val availableTemplates = remember(ui.vehicleKind, trackedKeys, query, targetKind) {
+        Seed.templates.filter { template ->
+            template.key !in trackedKeys &&
+                Seed.fits(template, ui.vehicleKind) &&
+                (targetKind == null || template.kind == targetKind) &&
+                (query.isBlank() || template.name.contains(query, ignoreCase = true) || template.category.contains(query, ignoreCase = true) || template.tip.contains(query, ignoreCase = true))
+        }
+    }
+
+    ModalBottomSheet(
+        onDismissRequest = onDismiss,
+        sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
+        containerColor = C.s1,
+        contentColor = C.t1,
+        dragHandle = null,
+    ) {
+        Column(
+            Modifier
+                .fillMaxWidth()
+                .navigationBarsPadding()
+                .imePadding()
+                .padding(horizontal = 20.dp, vertical = 14.dp),
+        ) {
+            SheetHeader(
+                title = "Tambah item",
+                subtitle = "Pilih item untuk mulai dipantau.",
+                onClose = onDismiss,
+            )
+            Spacer(Modifier.height(14.dp))
+
+            // Search Bar
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(46.dp)
+                    .clip(RoundedCornerShape(14.dp))
+                    .background(C.s2)
+                    .padding(horizontal = 14.dp),
+                contentAlignment = Alignment.CenterStart,
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                ) {
+                    Icon(
+                        imageVector = Icons.Rounded.Search,
+                        contentDescription = null,
+                        tint = C.t3,
+                        modifier = Modifier.size(20.dp),
+                    )
+                    Box(modifier = Modifier.weight(1f)) {
+                        if (query.isEmpty()) {
+                            Text(
+                                text = "Cari item, misal: oli, rem, busi...",
+                                style = Type.Small.copy(color = C.t3),
+                            )
+                        }
+                        BasicTextField(
+                            value = query,
+                            onValueChange = { query = it.take(40) },
+                            textStyle = Type.Small.copy(color = C.t1),
+                            cursorBrush = SolidColor(C.acc),
+                            singleLine = true,
+                            modifier = Modifier.fillMaxWidth(),
+                        )
+                    }
+                    if (query.isNotEmpty()) {
+                        Icon(
+                            imageVector = Icons.Rounded.Close,
+                            contentDescription = "Hapus",
+                            tint = C.t3,
+                            modifier = Modifier
+                                .size(18.dp)
+                                .clickable { query = "" },
+                        )
+                    }
+                }
+            }
+
+            Spacer(Modifier.height(12.dp))
+
+            // Category Chips Row
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .horizontalScroll(rememberScrollState()),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                listOf("Semua", "Komponen", "Perawatan", "Dokumen").forEachIndexed { idx, label ->
+                    Chip(
+                        label = label,
+                        selected = selectedKindIdx == idx,
+                        onClick = { selectedKindIdx = idx },
+                    )
+                }
+            }
+
+            Spacer(Modifier.height(14.dp))
+
+            // List of templates (Scrollable)
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .heightIn(max = 380.dp)
+                    .verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                if (availableTemplates.isEmpty()) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 32.dp),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Text(
+                            text = if (query.isNotBlank()) "Tidak ada item yang cocok dengan \"$query\"." else "Semua rekomendasi item sudah dipantau.",
+                            style = Type.Meta,
+                            color = C.t3,
+                            textAlign = TextAlign.Center,
+                        )
+                    }
+                } else {
+                    availableTemplates.forEach { template ->
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(16.dp))
+                                .background(C.s2)
+                                .clickable {
+                                    onDismiss()
+                                    onSelectTemplate(template.key)
+                                }
+                                .padding(12.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(12.dp),
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .size(40.dp)
+                                    .clip(RoundedCornerShape(12.dp))
+                                    .background(C.s3),
+                                contentAlignment = Alignment.Center,
+                            ) {
+                                Icon(
+                                    imageVector = componentIcon(template.key),
+                                    contentDescription = null,
+                                    tint = C.acc,
+                                    modifier = Modifier.size(20.dp),
+                                )
+                            }
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    text = template.name,
+                                    style = Type.Item,
+                                    color = C.t1,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis,
+                                )
+                                Spacer(Modifier.height(2.dp))
+                                Text(
+                                    text = Fmt.interval(template.km, template.months),
+                                    style = Type.Caption,
+                                    color = C.t3,
+                                )
+                            }
+                            Box(
+                                modifier = Modifier
+                                    .size(32.dp)
+                                    .clip(CircleShape)
+                                    .background(C.acc.copy(alpha = 0.15f)),
+                                contentAlignment = Alignment.Center,
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Rounded.Add,
+                                    contentDescription = "Pilih",
+                                    tint = C.acc,
+                                    modifier = Modifier.size(18.dp),
+                                )
+                            }
+                        }
+                    }
+                }
+
+                Spacer(Modifier.height(8.dp))
+
+                // Custom Item Button
+                SecondaryButton(
+                    text = "＋ Buat item kustom",
+                    onClick = {
+                        onDismiss()
+                        onCustom(targetKind ?: Kind.COMPONENT)
+                    },
+                )
+            }
+        }
+    }
+}
+
+/**
+ * Bottom sheet to adjust component intervals (km & months) or remove from tracking.
+ * Replaces the old accordion "Atur Umur Pakai" on ComponentDetailScreen.
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun IntervalAdjustSheet(
+    item: ComponentUi,
+    onDismiss: () -> Unit,
+    onSave: (km: Int?, months: Int?) -> Unit,
+    onDelete: () -> Unit,
+) {
+    val component = item.component
+    val template = Seed.template(component.templateKey)
+    val kind = Seed.kindOf(component.templateKey, component.category)
+
+    var kmText by rememberSaveable(component.id) {
+        mutableStateOf(component.intervalKm?.toString().orEmpty())
+    }
+    var monthText by rememberSaveable(component.id) {
+        mutableStateOf(component.intervalMonths?.toString().orEmpty())
+    }
+    var confirmDelete by remember { mutableStateOf(false) }
+
+    val km = kmText.toIntOrNull()?.takeIf { it > 0 }
+    val months = monthText.toIntOrNull()?.takeIf { it > 0 }
+    val valid = km != null || months != null
+
+    ModalBottomSheet(
+        onDismissRequest = onDismiss,
+        sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
+        containerColor = C.s1,
+        contentColor = C.t1,
+        dragHandle = null,
+    ) {
+        Column(
+            Modifier
+                .fillMaxWidth()
+                .navigationBarsPadding()
+                .imePadding()
+                .padding(horizontal = 20.dp, vertical = 14.dp),
+        ) {
+            SheetHeader(
+                title = "Ubah interval",
+                subtitle = "Atur batas pemakaian untuk ${component.name}.",
+                onClose = onDismiss,
+            )
+            Spacer(Modifier.height(16.dp))
+
+            if (kind != Kind.PAPERWORK) {
+                AppTextField(
+                    value = kmText,
+                    onValueChange = { kmText = it.filter(Char::isDigit).take(6) },
+                    label = "Interval jarak",
+                    suffix = "km",
+                    keyboardType = KeyboardType.Number,
+                    supportingText = template?.km?.let { "Rekomendasi: ${Fmt.number(it)} km" } ?: "Kosongkan jika tidak memakai batas km.",
+                )
+                Spacer(Modifier.height(12.dp))
+            }
+
+            AppTextField(
+                value = monthText,
+                onValueChange = { monthText = it.filter(Char::isDigit).take(3) },
+                label = "Interval waktu",
+                suffix = "bulan",
+                keyboardType = KeyboardType.Number,
+                supportingText = template?.months?.let { "Rekomendasi: Tiap $it bulan" } ?: "Kosongkan jika tidak memakai batas bulan.",
+            )
+
+            Spacer(Modifier.height(20.dp))
+
+            PrimaryButton(
+                text = "Simpan interval",
+                enabled = valid,
+                onClick = {
+                    onSave(km, months)
+                    onDismiss()
+                },
+            )
+
+            Spacer(Modifier.height(8.dp))
+
+            TextButton(
+                onClick = { confirmDelete = true },
+                modifier = Modifier.fillMaxWidth().height(48.dp),
+            ) {
+                Text(
+                    text = "Hapus dari daftar",
+                    style = Type.Button.copy(color = C.bad),
+                )
+            }
+        }
+    }
+
+    if (confirmDelete) {
+        AlertDialog(
+            onDismissRequest = { confirmDelete = false },
+            containerColor = C.s1,
+            titleContentColor = C.t1,
+            textContentColor = C.t2,
+            shape = RoundedCornerShape(24.dp),
+            title = { Text("Hapus ${component.name}?", style = Type.H2) },
+            text = {
+                Text(
+                    "Item akan berhenti dipantau. Catatan servis masa lalu tetap tersimpan di jurnal.",
+                    style = Type.Body,
+                    color = C.t2,
+                )
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        confirmDelete = false
+                        onDismiss()
+                        onDelete()
+                    },
+                ) {
+                    Text("Hapus", style = Type.Button.copy(color = C.bad))
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { confirmDelete = false }) {
+                    Text("Batal", style = Type.Button.copy(color = C.t2))
+                }
+            },
+        )
     }
 }
