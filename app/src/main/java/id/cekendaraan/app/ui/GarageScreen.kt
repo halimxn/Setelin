@@ -57,10 +57,11 @@ import id.cekendaraan.app.ui.theme.C
 @Composable
 fun GarageScreen(
     ui: UiState,
-    onBack: () -> Unit,
+    onBack: (() -> Unit)? = null,
     onUpdateOdometer: () -> Unit,
     onSaveVehicle: (Vehicle) -> Unit,
     onResetAll: () -> Unit,
+    title: String = "Akun",
 ) {
     val vehicle = ui.vehicle ?: return
     val context = LocalContext.current
@@ -70,7 +71,7 @@ fun GarageScreen(
     var confirmReset by rememberSaveable { mutableStateOf(false) }
 
     Column(Modifier.fillMaxSize().background(C.Bg).statusBarsPadding()) {
-        CenterTopBar(title = "Garasi", onBack = onBack)
+        CenterTopBar(title = title, onBack = onBack)
         Column(
             Modifier
                 .weight(1f)
@@ -247,12 +248,12 @@ fun GarageScreen(
             }
             Spacer(Modifier.height(30.dp))
             Text(
-                "Cek Kendaraan v0.2.0",
+                "Setelin v0.1.0",
                 color = C.Muted,
                 fontSize = 15.sp,
                 modifier = Modifier.align(Alignment.CenterHorizontally),
             )
-            Spacer(Modifier.height(30.dp))
+            Spacer(Modifier.height(130.dp))
         }
     }
 

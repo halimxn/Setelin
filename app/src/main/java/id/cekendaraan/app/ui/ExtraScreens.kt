@@ -332,22 +332,7 @@ fun ShopsScreen(ui: UiState, onOpenGarage: () -> Unit) {
                     }
                 }
             }
-            Spacer(Modifier.height(150.dp))
-        }
-        Box(
-            Modifier
-                .align(Alignment.BottomEnd)
-                .navigationBarsPadding()
-                .padding(end = 20.dp, bottom = 92.dp)
-                .size(56.dp)
-                .clip(CircleShape)
-                .background(C.BlueButton)
-                .clickable {
-                    Toast.makeText(context, "Scan QR bengkel segera hadir", Toast.LENGTH_SHORT).show()
-                },
-            contentAlignment = Alignment.Center,
-        ) {
-            Icon(Icons.Rounded.QrCode2, contentDescription = "Scan QR bengkel", tint = C.OnAccent, modifier = Modifier.size(28.dp))
+            Spacer(Modifier.height(130.dp))
         }
     }
 }
