@@ -28,7 +28,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Map
-import androidx.compose.material.icons.rounded.ArrowBack
+import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.rounded.Build
 import androidx.compose.material.icons.rounded.Fullscreen
 import androidx.compose.material.icons.rounded.KeyboardArrowDown
@@ -222,7 +222,7 @@ fun ShopsScreen(ui: UiState, onOpenGarage: () -> Unit) {
                     .fillMaxWidth()
                     .height(200.dp)
                     .clip(RoundedCornerShape(22.dp))
-                    .background(Color(0xFF1F242B))
+                    .background(C.s2)
                     .clickable { openMaps(workshop) },
             ) {
                 MapSketch(Modifier.fillMaxSize())
@@ -231,7 +231,7 @@ fun ShopsScreen(ui: UiState, onOpenGarage: () -> Unit) {
                         .align(Alignment.BottomStart)
                         .padding(10.dp)
                         .clip(CircleShape)
-                        .background(Color(0xFF2C3138))
+                        .background(C.s3)
                         .padding(horizontal = 12.dp, vertical = 7.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
@@ -245,7 +245,7 @@ fun ShopsScreen(ui: UiState, onOpenGarage: () -> Unit) {
                         .padding(10.dp)
                         .size(28.dp)
                         .clip(CircleShape)
-                        .background(Color(0xFF8E8E93)),
+                        .background(C.t2),
                     contentAlignment = Alignment.Center,
                 ) {
                     Icon(Icons.Rounded.Fullscreen, contentDescription = null, tint = Color.White, modifier = Modifier.size(16.dp))
@@ -368,11 +368,11 @@ private fun SectionHeader(title: String, onSeeAll: () -> Unit) {
 /** Simplified dark map of Java and its neighbours with a few pins. Decorative only. */
 @Composable
 private fun MapSketch(modifier: Modifier) {
-    val land = Color(0xFF2E343C)
+    val land = C.s2
     val labelPaint = remember {
         android.graphics.Paint().apply {
             isAntiAlias = true
-            color = android.graphics.Color.parseColor("#6B727C")
+            color = android.graphics.Color.rgb(93, 115, 133)
             typeface = android.graphics.Typeface.create(android.graphics.Typeface.DEFAULT, android.graphics.Typeface.BOLD)
         }
     }
@@ -416,7 +416,7 @@ private fun MapSketch(modifier: Modifier) {
         }
         val sby = pt(112.75f, 7.28f)
         drawCircle(Color.White, radius = 5.5.dp.toPx(), center = sby)
-        drawCircle(Color(0xFF8E8E93), radius = 4.dp.toPx(), center = sby)
+        drawCircle(C.t2, radius = 4.dp.toPx(), center = sby)
     }
 }
 
@@ -442,7 +442,7 @@ fun SearchScreen(
             Modifier.padding(start = 8.dp, end = 20.dp, top = 8.dp, bottom = 8.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            IconButton(onClick = onBack) { Icon(Icons.Rounded.ArrowBack, contentDescription = "Kembali", tint = C.Text) }
+            IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = "Kembali", tint = C.Text) }
             Spacer(Modifier.width(4.dp))
             PillField(
                 value = query,

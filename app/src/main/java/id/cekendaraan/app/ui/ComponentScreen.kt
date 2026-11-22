@@ -30,7 +30,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Build
 import androidx.compose.material.icons.outlined.Description
-import androidx.compose.material.icons.rounded.ArrowBack
+import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.rounded.Build
 import androidx.compose.material.icons.rounded.CalendarMonth
 import androidx.compose.material.icons.rounded.Info
@@ -112,7 +112,7 @@ fun ComponentDetailScreen(
     ) {
         Box(Modifier.fillMaxWidth().height(64.dp).padding(horizontal = 8.dp)) {
             IconButton(onClick = onBack, modifier = Modifier.align(Alignment.CenterStart)) {
-                Icon(Icons.Rounded.ArrowBack, contentDescription = "Kembali", tint = C.Text)
+                Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = "Kembali", tint = C.Text)
             }
         }
         Column(
@@ -164,7 +164,7 @@ fun ComponentDetailScreen(
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Icon(Icons.Rounded.Lightbulb, contentDescription = null, tint = C.Blue, modifier = Modifier.size(24.dp))
                             Spacer(Modifier.width(12.dp))
-                            Text("SARAN PERAWATAN", color = C.Blue, fontSize = 15.sp, fontWeight = FontWeight.Bold)
+                            Text("Saran perawatan", color = C.Blue, fontSize = 15.sp, fontWeight = FontWeight.Bold)
                         }
                         Spacer(Modifier.height(10.dp))
                         Text(tip, color = C.Muted, fontSize = 14.sp, lineHeight = 19.sp)

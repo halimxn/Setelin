@@ -2,7 +2,6 @@ package id.cekendaraan.app.ui
 
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -25,43 +24,13 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.Air
-import androidx.compose.material.icons.rounded.Album
-import androidx.compose.material.icons.rounded.ArrowBack
-import androidx.compose.material.icons.rounded.Badge
-import androidx.compose.material.icons.rounded.BatteryChargingFull
-import androidx.compose.material.icons.rounded.Bolt
-import androidx.compose.material.icons.rounded.Build
+import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.rounded.CalendarMonth
 import androidx.compose.material.icons.rounded.ChevronLeft
-import androidx.compose.material.icons.rounded.CleaningServices
 import androidx.compose.material.icons.rounded.Close
-import androidx.compose.material.icons.rounded.Co2
-import androidx.compose.material.icons.rounded.Compress
-import androidx.compose.material.icons.rounded.Description
-import androidx.compose.material.icons.rounded.DonutLarge
-import androidx.compose.material.icons.rounded.FilterAlt
-import androidx.compose.material.icons.rounded.Handyman
-import androidx.compose.material.icons.rounded.LocalGasStation
-import androidx.compose.material.icons.rounded.Loop
-import androidx.compose.material.icons.rounded.OilBarrel
-import androidx.compose.material.icons.rounded.Opacity
-import androidx.compose.material.icons.rounded.RadioButtonChecked
-import androidx.compose.material.icons.rounded.Settings
-import androidx.compose.material.icons.rounded.SettingsInputComponent
-import androidx.compose.material.icons.rounded.Thermostat
-import androidx.compose.material.icons.rounded.TireRepair
-import androidx.compose.material.icons.rounded.Tune
-import androidx.compose.material.icons.rounded.VerifiedUser
-import androidx.compose.material.icons.rounded.ViewDay
-import androidx.compose.material.icons.rounded.WaterDrop
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -71,11 +40,16 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.res.vectorResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
@@ -84,10 +58,11 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import id.cekendaraan.app.R
-import androidx.compose.ui.res.vectorResource
 import id.cekendaraan.app.domain.DueInfo
 import id.cekendaraan.app.domain.DueStatus
 import id.cekendaraan.app.ui.theme.C
+import id.cekendaraan.app.ui.theme.Gradients
+import id.cekendaraan.app.ui.theme.Type
 import java.text.NumberFormat
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
@@ -105,9 +80,11 @@ private val monthFormat = DateTimeFormatter.ofPattern("MMM", idLocale)
 private val monthYearFormat = DateTimeFormatter.ofPattern("MMMM yyyy", idLocale)
 private val monthYearShort = DateTimeFormatter.ofPattern("MMM yyyy", idLocale)
 
+/** Indonesian text and number formatting conforming strictly to docs/DESIGN.md */
 object Fmt {
     fun number(value: Int): String = intFormat.format(value)
-    fun money(value: Long): String = "Rp ${longFormat.format(value)}"
+    // DESIGN.md: rupiah tanpa spasi, misal Rp85.000
+    fun money(value: Long): String = "Rp${longFormat.format(value)}"
     fun date(epochDay: Long): String = LocalDate.ofEpochDay(epochDay).format(dateFormat)
     fun date(date: LocalDate): String = date.format(dateFormat)
     fun dateShort(epochDay: Long): String = LocalDate.ofEpochDay(epochDay).format(shortDateFormat)
@@ -139,11 +116,11 @@ object Fmt {
         }
     }
 
-    /** Small line under the headline, e.g. "perk. Jan 2027". */
+    /** Small line under headline, e.g. "Estimasi ganti Jan 2027". */
     fun tileSub(due: DueInfo): String {
         if (due.status == DueStatus.UNKNOWN) return "Ketuk untuk catat"
         val date = due.dueDate ?: return ""
-        return "perk. ${monthYearShort(date)}"
+        return "Estimasi ganti ${monthYearShort(date)}"
     }
 
     fun remaining(due: DueInfo): String {
@@ -176,19 +153,19 @@ object Fmt {
 private typealias DueLimit = id.cekendaraan.app.domain.DueLimit
 
 fun statusColor(status: DueStatus): Color = when (status) {
-    DueStatus.OK -> C.Green
-    DueStatus.SOON -> C.Amber
-    DueStatus.DUE -> C.Red
-    DueStatus.UNKNOWN -> C.Muted
-    DueStatus.NONE -> C.Muted
+    DueStatus.OK -> C.ok
+    DueStatus.SOON -> C.warn
+    DueStatus.DUE -> C.bad
+    DueStatus.UNKNOWN -> C.t3
+    DueStatus.NONE -> C.t3
 }
 
 fun statusLabel(status: DueStatus): String = when (status) {
-    DueStatus.OK -> "Sehat"
-    DueStatus.SOON -> "Cek Segera"
-    DueStatus.DUE -> "Perlu Diganti"
-    DueStatus.UNKNOWN -> "Belum Tercatat"
-    DueStatus.NONE -> "Tanpa Interval"
+    DueStatus.OK -> "Aman"
+    DueStatus.SOON -> "Segera"
+    DueStatus.DUE -> "Lewat"
+    DueStatus.UNKNOWN -> "Belum tercatat"
+    DueStatus.NONE -> "Tanpa interval"
 }
 
 /** Custom glyph set in res/drawable/ic_comp_*.xml (generated, 48dp, tintable). */
@@ -224,33 +201,518 @@ private fun componentIconRes(key: String): Int = when (key) {
 @Composable
 fun componentIcon(key: String): ImageVector = ImageVector.vectorResource(componentIconRes(key))
 
-/* ---------- building blocks ---------- */
+/* ---------- Neon Cockpit Fundamental Components ---------- */
+
+/**
+ * Primary action button:
+ * - 135° accent gradient (acc -> acc2)
+ * - Height: 54dp, Corner radius: 18dp
+ * - Text: 15sp, weight 700, color ink
+ */
+@Composable
+fun PrimaryButton(
+    text: String,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    enabled: Boolean = true,
+    icon: ImageVector? = null,
+) {
+    val bgBrush = if (enabled) Gradients.Accent else SolidColor(C.s2)
+    val contentColor = if (enabled) C.ink else C.t3
+
+    Box(
+        modifier = modifier
+            .fillMaxWidth()
+            .height(54.dp)
+            .clip(RoundedCornerShape(18.dp))
+            .background(bgBrush)
+            .clickable(enabled = enabled, onClick = onClick),
+        contentAlignment = Alignment.Center,
+    ) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.Center,
+        ) {
+            if (icon != null) {
+                Icon(icon, contentDescription = null, tint = contentColor, modifier = Modifier.size(18.dp))
+                Spacer(Modifier.width(8.dp))
+            }
+            Text(
+                text = text,
+                style = Type.Button.copy(color = contentColor),
+                maxLines = 1,
+                softWrap = false,
+            )
+        }
+    }
+}
+
+/**
+ * Secondary action button:
+ * - Surface s2 background, no border
+ * - Height: 54dp, Corner radius: 18dp
+ * - Text: 15sp, weight 700, color t1
+ */
+@Composable
+fun SecondaryButton(
+    text: String,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    enabled: Boolean = true,
+    icon: ImageVector? = null,
+) {
+    val contentColor = if (enabled) C.t1 else C.t3
+
+    Box(
+        modifier = modifier
+            .fillMaxWidth()
+            .height(54.dp)
+            .clip(RoundedCornerShape(18.dp))
+            .background(C.s2)
+            .clickable(enabled = enabled, onClick = onClick),
+        contentAlignment = Alignment.Center,
+    ) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.Center,
+        ) {
+            if (icon != null) {
+                Icon(icon, contentDescription = null, tint = contentColor, modifier = Modifier.size(18.dp))
+                Spacer(Modifier.width(8.dp))
+            }
+            Text(
+                text = text,
+                style = Type.Button.copy(color = contentColor),
+                maxLines = 1,
+                softWrap = false,
+            )
+        }
+    }
+}
+
+/**
+ * Icon button (42×42dp):
+ * - Surface s1 background, radius 14dp
+ * - Optional notification badge (7dp, acc)
+ */
+@Composable
+fun IconButton42(
+    icon: ImageVector,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    contentDescription: String? = null,
+    hasBadge: Boolean = false,
+    tint: Color = C.t1,
+) {
+    Box(
+        modifier = modifier
+            .size(42.dp)
+            .clip(RoundedCornerShape(14.dp))
+            .background(C.s1)
+            .clickable(onClick = onClick),
+        contentAlignment = Alignment.Center,
+    ) {
+        Icon(icon, contentDescription = contentDescription, tint = tint, modifier = Modifier.size(20.dp))
+        if (hasBadge) {
+            Box(
+                Modifier
+                    .size(7.dp)
+                    .align(Alignment.TopEnd)
+                    .padding(end = 4.dp, top = 4.dp)
+                    .clip(CircleShape)
+                    .background(C.acc),
+            )
+        }
+    }
+}
+
+/**
+ * Chip for horizontal filter bars:
+ * - Active: acc background, ink text
+ * - Inactive: s2 background, t2 text
+ * - Weight 600, pill shape
+ */
+@Composable
+fun Chip(
+    label: String,
+    selected: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val bg = if (selected) C.acc else C.s2
+    val textColor = if (selected) C.ink else C.t2
+
+    Box(
+        modifier = modifier
+            .clip(CircleShape)
+            .background(bg)
+            .clickable(onClick = onClick)
+            .padding(horizontal = 14.dp, vertical = 7.dp),
+        contentAlignment = Alignment.Center,
+    ) {
+        Text(
+            text = label,
+            style = Type.Small.copy(fontSize = 13.sp, color = textColor),
+            maxLines = 1,
+            softWrap = false,
+        )
+    }
+}
+
+/** Alias for older code calling FilterPill */
+@Composable
+fun FilterPill(label: String, selected: Boolean, onClick: () -> Unit) =
+    Chip(label = label, selected = selected, onClick = onClick)
+
+/**
+ * Status Tag:
+ * - Pill shape, 12sp, weight 700
+ * - Text in status color, background at 15% alpha
+ */
+@Composable
+fun StatusTag(
+    status: DueStatus,
+    modifier: Modifier = Modifier,
+    customLabel: String? = null,
+) {
+    val color = statusColor(status)
+    val text = customLabel ?: statusLabel(status)
+
+    Box(
+        modifier = modifier
+            .clip(CircleShape)
+            .background(color.copy(alpha = 0.15f))
+            .padding(horizontal = 10.dp, vertical = 4.dp),
+        contentAlignment = Alignment.Center,
+    ) {
+        Text(
+            text = text,
+            style = Type.Label.copy(fontWeight = FontWeight.W700, color = color),
+            maxLines = 1,
+            softWrap = false,
+        )
+    }
+}
+
+/** Backward compatible StatusPill */
+@Composable
+fun StatusPill(status: DueStatus, compact: Boolean = false) =
+    StatusTag(status = status)
+
+/**
+ * 5dp Progress Bar conforming strictly to DESIGN.md:
+ * - Height: 5dp, radius 3dp
+ * - Track: s3
+ * - Fill: animated status color or accent
+ */
+@Composable
+fun ProgressBar(
+    progress: Float,
+    color: Color,
+    modifier: Modifier = Modifier,
+    height: Dp = 5.dp,
+) {
+    val animatedProgress by animateFloatAsState(
+        targetValue = progress.coerceIn(0f, 1f),
+        label = "progressbar",
+    )
+
+    Box(
+        modifier = modifier
+            .fillMaxWidth()
+            .height(height)
+            .clip(RoundedCornerShape(height / 2))
+            .background(C.s3),
+    ) {
+        Box(
+            Modifier
+                .fillMaxWidth(animatedProgress)
+                .height(height)
+                .clip(RoundedCornerShape(height / 2))
+                .background(color),
+        )
+    }
+}
+
+/** Backward compatible ProgressLine */
+@Composable
+fun ProgressLine(
+    progress: Float,
+    color: Color,
+    modifier: Modifier = Modifier,
+    height: Int = 5,
+) = ProgressBar(progress = progress, color = color, modifier = modifier, height = height.dp)
+
+/**
+ * Item row card in list:
+ * - Background s1, radius 20dp, padding 14dp, NO border
+ * - Left: 44dp box with status color (13% alpha) + icon
+ * - Right: Name (Item, 15/600) + Value (14/700 tnum)
+ * - Middle: 5dp progress bar (track s3)
+ * - Bottom: Meta description (13/500, t2)
+ */
+@Composable
+fun ItemRow(
+    title: String,
+    value: String,
+    subtitle: String,
+    iconKey: String,
+    status: DueStatus,
+    progress: Float,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val color = statusColor(status)
+
+    Box(
+        modifier = modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(20.dp))
+            .background(C.s1)
+            .clickable(onClick = onClick)
+            .padding(14.dp),
+    ) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(14.dp),
+        ) {
+            // ① Icon well 44dp
+            Box(
+                modifier = Modifier
+                    .size(44.dp)
+                    .clip(RoundedCornerShape(14.dp))
+                    .background(color.copy(alpha = 0.13f)),
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(
+                    imageVector = componentIcon(iconKey),
+                    contentDescription = null,
+                    tint = color,
+                    modifier = Modifier.size(22.dp),
+                )
+            }
+
+            // Right content
+            Column(
+                modifier = Modifier.weight(1f),
+            ) {
+                // ② Name + ③ Value
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text(
+                        text = title,
+                        style = Type.Item,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.weight(1f, fill = false),
+                    )
+                    Spacer(Modifier.width(8.dp))
+                    Text(
+                        text = value,
+                        style = Type.Small.copy(fontWeight = FontWeight.W700),
+                        maxLines = 1,
+                        softWrap = false,
+                    )
+                }
+
+                Spacer(Modifier.height(9.dp))
+
+                // ④ Progress 5dp
+                ProgressBar(progress = progress, color = color, height = 5.dp)
+
+                Spacer(Modifier.height(6.dp))
+
+                // ⑤ Meta text
+                Text(
+                    text = subtitle,
+                    style = Type.Meta,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
+        }
+    }
+}
+
+/**
+ * Key-Value info item inside InfoCard.
+ */
+data class InfoRowItem(
+    val label: String,
+    val value: String,
+    val valueColor: Color = C.t1,
+)
+
+/**
+ * Info Card (Key–Value card):
+ * - Background s1, radius 20-22dp, padding 16dp
+ * - Label: Meta (13/500, t2)
+ * - Value: Small (13.5/600, tnum, t1)
+ * - Divider between rows: 6% t1 (C.div)
+ */
+@Composable
+fun InfoCard(
+    items: List<InfoRowItem>,
+    modifier: Modifier = Modifier,
+    radius: Dp = 20.dp,
+) {
+    Box(
+        modifier = modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(radius))
+            .background(C.s1)
+            .padding(16.dp),
+    ) {
+        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            items.forEachIndexed { index, item ->
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text(
+                        text = item.label,
+                        style = Type.Meta,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                    Spacer(Modifier.width(8.dp))
+                    Text(
+                        text = item.value,
+                        style = Type.Small.copy(color = item.valueColor),
+                        maxLines = 1,
+                        softWrap = false,
+                    )
+                }
+                if (index < items.lastIndex) {
+                    HorizontalDivider(color = C.div, thickness = 1.dp)
+                }
+            }
+        }
+    }
+}
+
+/**
+ * Circular Gauge Ring (176dp):
+ * - 176dp, thickness 12dp
+ * - Track: s3
+ * - Arc: starts at 12 o'clock (-90°), sweeps clockwise equal to remaining lifespan
+ * - Center: Display number (36sp, 700, tnum) + "km lagi" (Meta, t2)
+ */
+@Composable
+fun GaugeRing(
+    remainingValue: String,
+    unitText: String,
+    remainingRatio: Float,
+    statusColor: Color,
+    modifier: Modifier = Modifier,
+    iconKey: String? = null,
+    size: Dp = 176.dp,
+    strokeWidth: Dp = 12.dp,
+) {
+    val animatedRatio by animateFloatAsState(
+        targetValue = remainingRatio.coerceIn(0f, 1f),
+        label = "gaugering",
+    )
+
+    Box(
+        modifier = modifier.size(size),
+        contentAlignment = Alignment.Center,
+    ) {
+        // Subtle radial status glow behind the ring
+        Box(
+            modifier = Modifier
+                .size(size * 1.3f)
+                .background(Gradients.statusGlow(statusColor)),
+        )
+
+        Canvas(modifier = Modifier.size(size)) {
+            val strokePx = strokeWidth.toPx()
+            val arcSize = size.toPx() - strokePx
+            val topLeft = Offset(strokePx / 2, strokePx / 2)
+
+            // Background track s3
+            drawArc(
+                color = C.s3,
+                startAngle = 0f,
+                sweepAngle = 360f,
+                useCenter = false,
+                topLeft = topLeft,
+                size = Size(arcSize, arcSize),
+                style = Stroke(width = strokePx, cap = StrokeCap.Round),
+            )
+
+            // Dynamic remaining arc
+            if (animatedRatio > 0f) {
+                drawArc(
+                    color = statusColor,
+                    startAngle = -90f,
+                    sweepAngle = 360f * animatedRatio,
+                    useCenter = false,
+                    topLeft = topLeft,
+                    size = Size(arcSize, arcSize),
+                    style = Stroke(width = strokePx, cap = StrokeCap.Round),
+                )
+            }
+        }
+
+        // Center telemetry
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center,
+        ) {
+            if (iconKey != null) {
+                Icon(
+                    imageVector = componentIcon(iconKey),
+                    contentDescription = null,
+                    tint = statusColor,
+                    modifier = Modifier.size(24.dp),
+                )
+                Spacer(Modifier.height(4.dp))
+            }
+            Text(
+                text = remainingValue,
+                style = Type.DisplayRing,
+                maxLines = 1,
+                softWrap = false,
+            )
+            Text(
+                text = unitText,
+                style = Type.Meta,
+                maxLines = 1,
+            )
+        }
+    }
+}
+
+/* ---------- Common Utility Elements ---------- */
 
 @Composable
 fun BrandMark(modifier: Modifier = Modifier) {
     Row(modifier, verticalAlignment = Alignment.CenterVertically) {
-        Box(Modifier.size(8.dp).clip(CircleShape).background(C.Blue))
+        Box(Modifier.size(8.dp).clip(CircleShape).background(C.acc))
         Spacer(Modifier.width(8.dp))
-        Text("Cek Kendaraan", color = C.Text, fontSize = 15.sp, fontWeight = FontWeight.Bold)
+        Text("Cek Kendaraan", style = Type.Item.copy(fontWeight = FontWeight.W700))
     }
 }
 
-/** Round dark back button used on full screen flows. */
 @Composable
 fun BackCircle(onClick: () -> Unit, modifier: Modifier = Modifier) {
     Box(
         modifier
             .size(44.dp)
             .clip(CircleShape)
-            .background(C.Surface)
+            .background(C.s1)
             .clickable(onClick = onClick),
         contentAlignment = Alignment.Center,
     ) {
-        Icon(Icons.Rounded.ChevronLeft, contentDescription = "Kembali", tint = C.Text, modifier = Modifier.size(28.dp))
+        Icon(Icons.Rounded.ChevronLeft, contentDescription = "Kembali", tint = C.t1, modifier = Modifier.size(28.dp))
     }
 }
 
-/** Plain top bar: arrow on the left, centred title. */
 @Composable
 fun CenterTopBar(
     title: String,
@@ -265,14 +727,12 @@ fun CenterTopBar(
     ) {
         if (onBack != null) {
             IconButton(onClick = onBack, modifier = Modifier.align(Alignment.CenterStart)) {
-                Icon(Icons.Rounded.ArrowBack, contentDescription = "Kembali", tint = C.Text)
+                Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = "Kembali", tint = C.t1)
             }
         }
         Text(
-            title,
-            color = C.Text,
-            fontSize = 20.sp,
-            fontWeight = FontWeight.Medium,
+            text = title,
+            style = Type.H2,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
             modifier = Modifier
@@ -302,22 +762,21 @@ fun ScreenHeader(
     ) {
         if (onBack != null) {
             IconButton(onClick = onBack, modifier = Modifier.size(38.dp)) {
-                Icon(Icons.Rounded.ArrowBack, contentDescription = "Kembali", tint = C.Text)
+                Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = "Kembali", tint = C.t1)
             }
             Spacer(Modifier.width(8.dp))
         }
         Column(Modifier.weight(1f)) {
-            Text(title, style = MaterialTheme.typography.headlineSmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Text(title, style = Type.H2, maxLines = 1, overflow = TextOverflow.Ellipsis)
             if (subtitle != null) {
                 Spacer(Modifier.height(2.dp))
-                Text(subtitle, style = MaterialTheme.typography.bodySmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Text(subtitle, style = Type.Meta, maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
         }
         trailing?.invoke()
     }
 }
 
-/** Grey pill segmented control ("Komponen | Perawatan | Dokumen"). */
 @Composable
 fun SegmentedControl(
     options: List<String>,
@@ -326,19 +785,19 @@ fun SegmentedControl(
     modifier: Modifier = Modifier,
     height: Dp = 48.dp,
     equalWidth: Boolean = true,
-    fontSize: Int = 16,
+    fontSize: Int = 14,
 ) {
     Row(
         modifier
             .height(height)
             .clip(CircleShape)
-            .background(C.Surface)
+            .background(C.s1)
             .padding(4.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         options.forEachIndexed { index, label ->
             val active = index == selected
-            val bg by animateColorAsState(if (active) C.Segment else Color.Transparent, label = "seg")
+            val bg by animateColorAsState(if (active) C.s2 else Color.Transparent, label = "seg")
             Box(
                 (if (equalWidth) Modifier.weight(1f) else Modifier)
                     .fillMaxHeight()
@@ -352,10 +811,12 @@ fun SegmentedControl(
                 contentAlignment = Alignment.Center,
             ) {
                 Text(
-                    label,
-                    color = if (active) C.Text else C.Muted,
-                    fontSize = fontSize.sp,
-                    fontWeight = if (active) FontWeight.Bold else FontWeight.Normal,
+                    text = label,
+                    style = Type.Small.copy(
+                        fontSize = fontSize.sp,
+                        color = if (active) C.t1 else C.t2,
+                        fontWeight = if (active) FontWeight.W700 else FontWeight.W500,
+                    ),
                     maxLines = 1,
                     softWrap = false,
                 )
@@ -365,64 +826,18 @@ fun SegmentedControl(
 }
 
 @Composable
-fun StatusPill(status: DueStatus, compact: Boolean = false) {
-    val color = statusColor(status)
-    Surface(
-        color = color.copy(alpha = 0.16f),
-        shape = CircleShape,
-    ) {
-        Text(
-            statusLabel(status),
-            color = color,
-            fontSize = if (compact) 11.sp else 13.sp,
-            fontWeight = FontWeight.Bold,
-            maxLines = 1,
-            modifier = Modifier.padding(
-                horizontal = if (compact) 9.dp else 12.dp,
-                vertical = if (compact) 3.dp else 5.dp,
-            ),
-        )
-    }
-}
-
-@Composable
-fun ProgressLine(
-    progress: Float,
-    color: Color,
-    modifier: Modifier = Modifier,
-    height: Int = 8,
-) {
-    val animated by animateFloatAsState(progress.coerceIn(0f, 1f), label = "progress")
-    Box(
-        modifier
-            .fillMaxWidth()
-            .height(height.dp)
-            .clip(CircleShape)
-            .background(C.Surface2),
-    ) {
-        Box(
-            Modifier
-                .fillMaxWidth(animated)
-                .height(height.dp)
-                .clip(CircleShape)
-                .background(color),
-        )
-    }
-}
-
-@Composable
 fun IconWell(
     icon: String,
     color: Color,
     modifier: Modifier = Modifier,
-    size: Int = 46,
-    iconSize: Int = 23,
+    size: Int = 44,
+    iconSize: Int = 22,
 ) {
     Box(
         modifier = modifier
             .size(size.dp)
-            .clip(CircleShape)
-            .background(color.copy(alpha = 0.14f)),
+            .clip(RoundedCornerShape(14.dp))
+            .background(color.copy(alpha = 0.13f)),
         contentAlignment = Alignment.Center,
     ) {
         Icon(componentIcon(icon), contentDescription = null, tint = color, modifier = Modifier.size(iconSize.dp))
@@ -435,82 +850,11 @@ fun SectionTitle(title: String, trailing: (@Composable () -> Unit)? = null) {
         modifier = Modifier.fillMaxWidth(),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Text(title, fontSize = 22.sp, fontWeight = FontWeight.Bold, color = C.Text, modifier = Modifier.weight(1f))
+        Text(title, style = Type.H2, modifier = Modifier.weight(1f))
         trailing?.invoke()
     }
 }
 
-/** Full-width blue pill button. */
-@Composable
-fun PrimaryButton(
-    text: String,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier,
-    enabled: Boolean = true,
-    icon: ImageVector? = null,
-) {
-    Button(
-        onClick = onClick,
-        modifier = modifier.fillMaxWidth().height(52.dp),
-        enabled = enabled,
-        shape = CircleShape,
-        colors = ButtonDefaults.buttonColors(
-            containerColor = C.BlueButton,
-            contentColor = C.OnAccent,
-            disabledContainerColor = C.BlueSoft,
-            disabledContentColor = C.Muted2,
-        ),
-    ) {
-        if (icon != null) {
-            Icon(icon, contentDescription = null, modifier = Modifier.size(20.dp))
-            Spacer(Modifier.width(8.dp))
-        }
-        Text(text, fontWeight = FontWeight.Bold, fontSize = 17.sp, letterSpacing = 0.sp)
-    }
-}
-
-@Composable
-fun SecondaryButton(
-    text: String,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier,
-    enabled: Boolean = true,
-    icon: ImageVector? = null,
-) {
-    OutlinedButton(
-        onClick = onClick,
-        modifier = modifier.fillMaxWidth().height(54.dp),
-        enabled = enabled,
-        shape = CircleShape,
-        border = BorderStroke(1.dp, C.LineStrong),
-        colors = ButtonDefaults.outlinedButtonColors(containerColor = C.Surface, contentColor = C.Text),
-    ) {
-        if (icon != null) {
-            Icon(icon, contentDescription = null, modifier = Modifier.size(18.dp))
-            Spacer(Modifier.width(8.dp))
-        }
-        Text(text, fontWeight = FontWeight.SemiBold, fontSize = 16.sp)
-    }
-}
-
-@Composable
-fun FilterPill(label: String, selected: Boolean, onClick: () -> Unit) {
-    Surface(
-        color = if (selected) C.Segment else C.Surface,
-        contentColor = if (selected) C.Text else C.Muted,
-        shape = CircleShape,
-        modifier = Modifier.clickable(onClick = onClick),
-    ) {
-        Text(
-            label,
-            modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp),
-            fontSize = 13.sp,
-            fontWeight = FontWeight.Bold,
-        )
-    }
-}
-
-/** Pill-shaped text field like the vehicle-name input. */
 @Composable
 fun PillField(
     value: String,
@@ -525,21 +869,21 @@ fun PillField(
             .fillMaxWidth()
             .height(54.dp)
             .clip(CircleShape)
-            .background(C.Field)
-            .border(1.dp, C.LineStrong, CircleShape)
+            .background(C.s1)
+            .border(1.dp, C.s3, CircleShape)
             .padding(start = 22.dp, end = if (trailing != null) 6.dp else 22.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Box(Modifier.weight(1f)) {
             if (value.isEmpty()) {
-                Text(placeholder, color = C.Muted2, fontSize = 17.sp, maxLines = 1)
+                Text(placeholder, style = Type.Body.copy(color = C.t3), maxLines = 1)
             }
             BasicTextField(
                 value = value,
                 onValueChange = onValueChange,
                 singleLine = true,
-                textStyle = MaterialTheme.typography.bodyLarge.copy(color = C.Text, fontSize = 17.sp),
-                cursorBrush = SolidColor(C.Blue),
+                textStyle = Type.Body.copy(color = C.t1, fontSize = 16.sp),
+                cursorBrush = SolidColor(C.acc),
                 keyboardOptions = KeyboardOptions(keyboardType = keyboardType),
                 modifier = Modifier.fillMaxWidth(),
             )
@@ -548,7 +892,6 @@ fun PillField(
     }
 }
 
-/** Small black box input used for intervals ("2000"). */
 @Composable
 fun BoxNumberField(
     value: String,
@@ -561,21 +904,17 @@ fun BoxNumberField(
             .width(80.dp)
             .height(48.dp)
             .clip(RoundedCornerShape(10.dp))
-            .background(C.Inset)
-            .border(1.dp, C.Line, RoundedCornerShape(10.dp)),
+            .background(C.s1)
+            .border(1.dp, C.s2, RoundedCornerShape(10.dp)),
         contentAlignment = Alignment.Center,
     ) {
-        if (value.isEmpty()) Text(placeholder, color = C.Muted2, fontSize = 18.sp)
+        if (value.isEmpty()) Text(placeholder, style = Type.Stat.copy(color = C.t3))
         BasicTextField(
             value = value,
             onValueChange = { onValueChange(it.filter(Char::isDigit).take(7)) },
             singleLine = true,
-            textStyle = MaterialTheme.typography.bodyLarge.copy(
-                color = C.Text,
-                fontSize = 18.sp,
-                textAlign = TextAlign.Center,
-            ),
-            cursorBrush = SolidColor(C.Blue),
+            textStyle = Type.Stat.copy(textAlign = TextAlign.Center, color = C.t1),
+            cursorBrush = SolidColor(C.acc),
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
             modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp),
         )
@@ -597,51 +936,48 @@ fun AppTextField(
     supportingText: String? = null,
 ) {
     Column(modifier) {
-        Text(label, color = C.Muted, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
+        Text(label, style = Type.Label)
         Spacer(Modifier.height(8.dp))
         val shape = if (singleLine) CircleShape else RoundedCornerShape(18.dp)
         Row(
             Modifier
                 .fillMaxWidth()
                 .clip(shape)
-                .background(C.Field)
-                .border(1.dp, if (isError) C.Red else C.LineStrong, shape)
+                .background(C.s1)
+                .border(1.dp, if (isError) C.bad else C.s3, shape)
                 .padding(horizontal = 20.dp, vertical = 15.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Box(Modifier.weight(1f)) {
                 if (value.isEmpty() && placeholder != null) {
-                    Text(placeholder, color = C.Muted2, fontSize = 16.sp)
+                    Text(placeholder, style = Type.Body.copy(color = C.t3))
                 }
                 BasicTextField(
                     value = value,
                     onValueChange = onValueChange,
                     singleLine = singleLine,
                     minLines = minLines,
-                    textStyle = MaterialTheme.typography.bodyLarge.copy(color = C.Text),
-                    cursorBrush = SolidColor(C.Blue),
+                    textStyle = Type.Body.copy(color = C.t1),
+                    cursorBrush = SolidColor(C.acc),
                     keyboardOptions = KeyboardOptions(keyboardType = keyboardType),
                     modifier = Modifier.fillMaxWidth(),
                 )
             }
             if (suffix != null) {
                 Spacer(Modifier.width(8.dp))
-                Text(suffix, color = C.Muted, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
+                Text(suffix, style = Type.Small.copy(color = C.t2))
             }
         }
         if (supportingText != null) {
             Text(
                 supportingText,
-                color = if (isError) C.Red else C.Muted,
-                fontSize = 13.sp,
-                lineHeight = 17.sp,
+                style = Type.Caption.copy(color = if (isError) C.bad else C.t3),
                 modifier = Modifier.padding(start = 8.dp, top = 6.dp),
             )
         }
     }
 }
 
-/** Centred empty state: grey circle with icon, bold title, muted message. */
 @Composable
 fun EmptyState(
     icon: ImageVector,
@@ -660,31 +996,26 @@ fun EmptyState(
             Modifier
                 .size(64.dp)
                 .clip(CircleShape)
-                .background(C.Surface),
+                .background(C.s1),
             contentAlignment = Alignment.Center,
         ) {
-            Icon(icon, contentDescription = null, tint = C.Muted, modifier = Modifier.size(30.dp))
+            Icon(icon, contentDescription = null, tint = C.t2, modifier = Modifier.size(30.dp))
         }
         Spacer(Modifier.height(18.dp))
-        Text(title, color = C.Text, fontSize = 21.sp, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center)
+        Text(title, style = Type.H2, textAlign = TextAlign.Center)
         Spacer(Modifier.height(8.dp))
         Text(
             message,
-            color = C.Muted,
-            fontSize = 16.sp,
-            lineHeight = 22.sp,
+            style = Type.Body,
             textAlign = TextAlign.Center,
         )
         if (actionLabel != null && onAction != null) {
             Spacer(Modifier.height(18.dp))
-            Button(
+            PrimaryButton(
+                text = actionLabel,
                 onClick = onAction,
-                shape = CircleShape,
-                colors = ButtonDefaults.buttonColors(containerColor = C.BlueButton, contentColor = C.OnAccent),
-                modifier = Modifier.height(40.dp),
-            ) {
-                Text(actionLabel, fontSize = 16.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(horizontal = 12.dp))
-            }
+                modifier = Modifier.width(180.dp),
+            )
         }
     }
 }
@@ -692,7 +1023,7 @@ fun EmptyState(
 @Composable
 fun CloseButton(onClick: () -> Unit) {
     IconButton(onClick = onClick, modifier = Modifier.size(36.dp)) {
-        Icon(Icons.Rounded.Close, contentDescription = "Tutup", tint = C.Muted)
+        Icon(Icons.Rounded.Close, contentDescription = "Tutup", tint = C.t2)
     }
 }
 
@@ -701,9 +1032,9 @@ fun DueStat(value: String, label: String, color: Color) {
     Row(verticalAlignment = Alignment.CenterVertically) {
         Box(Modifier.size(6.dp).clip(CircleShape).background(color))
         Spacer(Modifier.width(5.dp))
-        Text(value, color = C.Text, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+        Text(value, style = Type.Small.copy(fontWeight = FontWeight.W700))
         Spacer(Modifier.width(4.dp))
-        Text(label, color = C.Muted, fontSize = 12.sp)
+        Text(label, style = Type.Label)
     }
 }
 
@@ -718,10 +1049,10 @@ fun percentLabel(due: DueInfo): String =
 fun SheetHeader(title: String, onClose: () -> Unit, subtitle: String? = null) {
     Row(verticalAlignment = Alignment.CenterVertically) {
         Column(Modifier.weight(1f)) {
-            Text(title, style = MaterialTheme.typography.headlineSmall)
+            Text(title, style = Type.H2)
             if (subtitle != null) {
                 Spacer(Modifier.height(2.dp))
-                Text(subtitle, style = MaterialTheme.typography.bodySmall)
+                Text(subtitle, style = Type.Meta)
             }
         }
         CloseButton(onClose)
@@ -733,35 +1064,33 @@ fun CalendarPill(text: String, onClick: () -> Unit, modifier: Modifier = Modifie
     Row(
         modifier = modifier
             .clip(CircleShape)
-            .background(C.Field)
-            .border(1.dp, C.LineStrong, CircleShape)
+            .background(C.s1)
+            .border(1.dp, C.s3, CircleShape)
             .clickable(onClick = onClick)
             .padding(horizontal = 18.dp, vertical = 14.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Icon(Icons.Rounded.CalendarMonth, contentDescription = null, tint = C.Blue, modifier = Modifier.size(18.dp))
+        Icon(Icons.Rounded.CalendarMonth, contentDescription = null, tint = C.acc, modifier = Modifier.size(18.dp))
         Spacer(Modifier.width(8.dp))
-        Text(text, color = C.Text, fontSize = 15.sp, fontWeight = FontWeight.SemiBold)
+        Text(text, style = Type.Item)
     }
 }
 
 @Composable
-fun InfoNote(text: String, color: Color = C.Muted) {
+fun InfoNote(text: String, color: Color = C.t2) {
     Text(
         text,
-        color = color,
-        fontSize = 13.sp,
-        lineHeight = 18.sp,
+        style = Type.Meta.copy(color = color),
         modifier = Modifier.padding(horizontal = 4.dp),
     )
 }
 
-/** Rounded dark card container. */
+/** Rounded dark card container, no border by default. */
 @Composable
 fun Card(
     modifier: Modifier = Modifier,
-    radius: Dp = 26.dp,
-    color: Color = C.Surface,
+    radius: Dp = 20.dp,
+    color: Color = C.s1,
     border: Color? = null,
     content: @Composable () -> Unit,
 ) {
@@ -783,4 +1112,3 @@ fun Modifier.dashedBorder(color: Color, radius: Dp): Modifier = drawBehind {
         style = Stroke(width = 2.dp.toPx(), pathEffect = PathEffect.dashPathEffect(floatArrayOf(14f, 10f))),
     )
 }
-

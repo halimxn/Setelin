@@ -400,7 +400,7 @@ private fun BrandModelStep(
                                 .padding(horizontal = 18.dp, vertical = 14.dp),
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
-                            Text(m.name, color = if (on) C.Blue else C.Text, fontSize = 16.sp, fontWeight = if (on) FontWeight.Bold else FontWeight.Normal, modifier = Modifier.weight(1f))
+                            Text(m.name, color = if (on) C.Blue else C.Text, fontSize = 16.sp, fontWeight = if (on) FontWeight.Bold else FontWeight.Medium, modifier = Modifier.weight(1f))
                             if (m.kind == VehicleKind.SPORT) {
                                 Text("Sport", color = C.Muted, fontSize = 12.sp, modifier = Modifier.padding(end = 10.dp))
                             }
@@ -596,7 +596,7 @@ private fun OdometerStep(value: String, onValue: (String) -> Unit, onBack: () ->
 /** Line-art dashboard illustration for the odometer step, fading into the page at the bottom. */
 @Composable
 private fun OdometerArt(modifier: Modifier) {
-    Box(modifier.background(Color(0xFF0A0F14))) {
+    Box(modifier.background(C.bg)) {
         Image(
             painter = painterResource(R.drawable.odometer_art),
             contentDescription = "Ilustrasi odometer",

@@ -434,8 +434,9 @@ fun LogServiceSheet(
                 text = "Simpan servis",
                 onClick = {
                     val parsedCost = costText.toLongOrNull()?.takeIf { it > 0 }
-                    if (valid && odo != null) {
-                        onSave(selected.toList(), date, odo, parsedCost, note)
+                    val currentOdo = odo
+                    if (valid && currentOdo != null) {
+                        onSave(selected.toList(), date, currentOdo, parsedCost, note)
                     }
                 },
                 enabled = valid,

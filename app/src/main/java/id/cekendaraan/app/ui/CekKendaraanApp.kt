@@ -276,7 +276,7 @@ private fun FloatingNav(
                 .weight(1f)
                 .height(58.dp)
                 .clip(CircleShape)
-                .background(Color(0xE60A111A))
+                .background(C.s1.copy(alpha = 0.9f))
                 .border(1.dp, C.Line, CircleShape)
                 .padding(4.dp),
             horizontalArrangement = Arrangement.SpaceBetween,
@@ -321,7 +321,7 @@ private fun FloatingNav(
             Modifier
                 .size(58.dp)
                 .clip(CircleShape)
-                .background(Color(0xE60A111A))
+                .background(C.s1.copy(alpha = 0.9f))
                 .border(1.dp, C.Line, CircleShape)
                 .clickable(onClick = onSearch),
             contentAlignment = Alignment.Center,

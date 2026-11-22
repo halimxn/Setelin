@@ -32,7 +32,7 @@ import androidx.compose.material.icons.rounded.CheckCircle
 import androidx.compose.material.icons.rounded.Description
 import androidx.compose.material.icons.rounded.Error
 import androidx.compose.material.icons.rounded.Handyman
-import androidx.compose.material.icons.rounded.HelpOutline
+import androidx.compose.material.icons.automirrored.rounded.HelpOutline
 import androidx.compose.material.icons.rounded.KeyboardArrowDown
 import androidx.compose.material.icons.rounded.KeyboardArrowUp
 import androidx.compose.material.icons.rounded.Settings
@@ -472,7 +472,7 @@ fun VehicleHero(
             .background(
                 Brush.radialGradient(
                     listOf(
-                        if (glow) C.BlueGlow.copy(alpha = 0.55f) else Color(0xFF15181C),
+                        if (glow) C.acc.copy(alpha = 0.28f) else C.s2,
                         Color.Transparent,
                     ),
                 ),
@@ -521,11 +521,11 @@ private fun SummaryBanner(ui: UiState) {
         active.isEmpty() -> Triple(null, C.Muted, "Tambah komponen untuk melihat ringkasan di sini.")
         ui.dueCount > 0 -> Triple(Icons.Rounded.Error, C.Red, "${ui.dueCount} item perlu diganti")
         ui.soonCount > 0 -> Triple(Icons.Rounded.Warning, C.Amber, "${ui.soonCount} item perlu dicek segera")
-        ui.unknownCount > 0 && ui.okCount == 0 -> Triple(Icons.Rounded.HelpOutline, C.Muted, "Catat servis terakhir untuk memulai")
+        ui.unknownCount > 0 && ui.okCount == 0 -> Triple(Icons.AutoMirrored.Rounded.HelpOutline, C.Muted, "Catat servis terakhir untuk memulai")
         else -> Triple(Icons.Rounded.CheckCircle, C.Green, "Semua komponen aman")
     }
     val border = if (icon == null) C.LineStrong else color.copy(alpha = 0.45f).let {
-        if (color == C.Green) Color(0xFF29457A) else it
+        if (color == C.ok) C.ok.copy(alpha = 0.25f) else it
     }
     Row(
         Modifier
@@ -545,7 +545,7 @@ private fun SummaryBanner(ui: UiState) {
             text,
             color = if (icon == null) C.Muted else C.Text,
             fontSize = 16.sp,
-            fontWeight = if (icon == null) FontWeight.Normal else FontWeight.SemiBold,
+            fontWeight = if (icon == null) FontWeight.Medium else FontWeight.SemiBold,
             textAlign = if (icon == null) TextAlign.Center else TextAlign.Start,
             lineHeight = 22.sp,
         )
@@ -559,7 +559,7 @@ private fun GroupHeader(status: DueStatus, count: Int) {
         DueStatus.DUE -> Icons.Rounded.Error
         DueStatus.SOON -> Icons.Rounded.Warning
         DueStatus.OK -> Icons.Rounded.CheckCircle
-        else -> Icons.Rounded.HelpOutline
+        else -> Icons.AutoMirrored.Rounded.HelpOutline
     }
     Row(Modifier.fillMaxWidth().padding(horizontal = 8.dp), verticalAlignment = Alignment.CenterVertically) {
         Icon(icon, contentDescription = null, tint = color, modifier = Modifier.size(26.dp))

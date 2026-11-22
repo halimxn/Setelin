@@ -54,8 +54,8 @@ fun ParticleRing(modifier: Modifier = Modifier, progress: Float = 0f) {
             )
         }
     }
-    val idle = Color(0xFF8E8E93)
-    val lit = Color(0xFF6FB6FF)
+    val idle = C.t3
+    val lit = C.acc
 
     Canvas(modifier) {
         val t = clock.floatValue
