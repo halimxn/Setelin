@@ -103,8 +103,8 @@ id.cekendaraan.app
 
 1. **Clone the repository:**
    ```bash
-   git clone https://github.com/username/setelin.git
-   cd setelin
+   git clone https://github.com/halimxn/Setelin.git
+   cd Setelin
    ```
 
 2. **Configure your Android SDK path:**
