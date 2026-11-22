@@ -1,105 +1,138 @@
 <div align="center">
 
-  <img src="art/logo.svg" alt="Setelin Logo" width="132" height="132" />
+  <img src="art/logo.svg" alt="Setelin Logo" width="120" height="120" />
 
   # Setelin
-  
-  **The ultimate offline-first, precision maintenance & interval tracker for motorcycles and cars.**
-  
-  *Setel interval, rawat kendaraan tanpa menebak.*
 
-  [![Platform](https://img.shields.io/badge/Platform-Android-3DDC84?style=for-the-badge&logo=android&logoColor=white)](https://android.com)
-  [![Language](https://img.shields.io/badge/Kotlin-2.0.21-7F52FF?style=for-the-badge&logo=kotlin&logoColor=white)](https://kotlinlang.org)
-  [![Jetpack Compose](https://img.shields.io/badge/Jetpack%20Compose-BOM%202024.12-4285F4?style=for-the-badge&logo=jetpackcompose&logoColor=white)](https://developer.android.com/jetpack/compose)
-  [![Design Theme](https://img.shields.io/badge/Theme-Neon%20Cockpit-22D3EE?style=for-the-badge)](docs/DESIGN.md)
-  [![Privacy](https://img.shields.io/badge/Privacy-100%25%20Offline-success?style=for-the-badge)](#privacy--offline-first)
-  [![APK Size](https://img.shields.io/badge/APK%20Size-~1.9%20MB-blueviolet?style=for-the-badge)](#performance--architecture)
+  **Precision maintenance telemetry and dual-axis interval tracking for motorcycles and cars.**
+
+  *Tune your intervals. Maintain your machine without guesswork.*
+
+  [![Platform](https://img.shields.io/badge/Platform-Android-3DDC84?style=flat-square&logo=android&logoColor=white)](https://android.com)
+  [![Language](https://img.shields.io/badge/Language-Kotlin%202.0-7F52FF?style=flat-square&logo=kotlin&logoColor=white)](https://kotlinlang.org)
+  [![UI Framework](https://img.shields.io/badge/UI-Jetpack%20Compose-4285F4?style=flat-square&logo=jetpackcompose&logoColor=white)](https://developer.android.com/jetpack/compose)
+  [![Design Theme](https://img.shields.io/badge/Design-Neon%20Cockpit-22D3EE?style=flat-square)](docs/DESIGN.md)
+  [![Architecture](https://img.shields.io/badge/Database-Room%20(Offline%20First)-34D399?style=flat-square)](#offline-first-architecture)
+  [![Binary Footprint](https://img.shields.io/badge/Release%20APK-~1.9%20MB-blueviolet?style=flat-square)](#performance-and-footprint)
 
 </div>
 
 ---
 
-## 🌟 What is Setelin?
+## Overview
 
-**Setelin** (derived from the Indonesian automotive slang *"setel"* — meaning to fine-tune, tune up, and calibrate) is an ultra-lightweight, privacy-respecting Android application tailored specifically for vehicle owners in Indonesia.
+Most vehicle maintenance systems fail for a simple reason: they rely on static estimates or human memory. Physical service booklets get misplaced in glove compartments, paper oil-change stickers fade in the sun, and generic reminder apps treat mechanical wear as a simple countdown of days.
 
-Whether you commute daily on a scooter (**Honda Vario, Beat, Scoopy, Yamaha NMAX, Aerox**), ride an enthusiast sportbike, pilot an electric commuter (**Alva, Gesits, Wuling Air EV**), or drive a family car (**Avanza, Xpander, Brio, Sigra**), Setelin gives you cockpit-grade control over your vehicle's health.
+Mechanical components degrade across two independent dimensions:
+1. **Mechanical friction and displacement**, measured in kilometers traveled.
+2. **Chemical breakdown, environmental exposure, and regulatory expiry**, measured in calendar time.
 
-It tracks oil changes, brake pads, CVT drive belts, spark plugs, filters, and regulatory paperwork (STNK & SIM renewals) using dual-axis predictions: **distance (km)** and **time (calendar months)**. Whichever runs out first determines your vehicle's status.
+A scooter driven 3,000 km in four weeks requires an oil change just as urgently as a scooter parked in a garage for six months whose oil has oxidized. 
 
-> **Zero accounts. Zero tracking. Zero ads.** All data stays strictly on your device.
-
----
-
-## ✨ Key Highlights
-
-- **⚡ Neon Cockpit Design System**: Deep black panels (`#060A10`), luminous cyan instruments (`#22D3EE`), and high-contrast status feedback. Designed strictly around the variable **Manrope** typographic scale (weights 500, 600, 700) with tabular numerals (`tnum`).
-- **⏱️ Dual-Limit Predictive Health**: Accurately computes remaining lifespan based on both kilometer intervals and monthly calendar limits. Status tags clearly announce **Aman (Good)**, **Segera (Due Soon)**, or **Lewat (Overdue)**.
-- **🛵 Built-in Indonesian Fleet Presets**: Pre-configured service templates for popular Indonesian motorcycles and cars, including engine oil, gear/transmission oil, CVT roller/belt checks, radiator coolant, valve adjustments, and vehicle taxes.
-- **📷 Instant On-Device Odometer Scanner**: Point your camera at your digital or analog odometer to capture readings in seconds. Powered by Google ML Kit on-device text recognition with zero network calls.
-- **🛡️ 100% Offline & Private**: Backed by an encrypted local Room SQLite database. Your vehicle data, expenses, and journey records never leave your phone.
-- **🪶 Featherweight Footprint**: Optimized with R8 shrinking and vector assets. Yields a compact release APK (~1.9 MB) with fluid 60/120 fps animations.
+**Setelin** bridges this gap. Rooted in the Indonesian automotive vernacular *"setel"* (to calibrate, fine-tune, or synchronize), Setelin provides cockpit-grade telemetry and dual-axis predictive maintenance tracking for everyday commuters and automotive enthusiasts across Indonesia.
 
 ---
 
-## 🎨 Design Philosophy: "Neon Cockpit"
+## Core Capabilities
 
-Setelin embraces a purpose-built aesthetic designed for high legibility in low-light environments, such as inside garages or at night.
+### Dual-Axis Predictive Lifespan Algorithm
+Every tracked component, preventative treatment, and legal document is evaluated against distance and time constraints simultaneously. The system determines status based on whichever threshold is reached first:
+* **Optimal (Aman)**: Operating safely within established tolerance limits.
+* **Due Soon (Segera)**: Reaching 80 percent or more of component lifespan in distance or time.
+* **Overdue (Lewat)**: Exceeding 100 percent of scheduled interval threshold.
 
-| Token | Hex | Role |
+### Instant On-Device Odometer Extraction
+Instead of tedious manual entry, Setelin integrates on-device optical character recognition using Google ML Kit. Point the camera at digital or analog odometer clusters to extract mileage in real time. Frame-stabilization heuristics require consecutive matching readings before confirmation, preventing misreadings. No images ever leave the device.
+
+### Fleet Presets Tailored to the Indonesian Market
+Out of the box, Setelin includes specialized maintenance templates calibrated for vehicles commonly driven across Southeast Asia:
+* **Automatic Scooters (CVT)**: Engine oil, transmission/gear oil, CVT drive belts, sliding rollers, clutch shoes, and air filters.
+* **Manual and Sport Motorcycles**: Chain lubrication and slack, spark plugs, valve clearance, brake fluid, and coolant.
+* **Passenger Cars and Commercial MPVs**: Engine oil, oil filters, brake pads, tire rotations, cabin filters, and spark plugs.
+* **Electric Vehicles**: Reduction gear oil, auxiliary 12V battery, brake fluid, and high-voltage cooling system inspections.
+* **Legal Documentation**: Annual vehicle tax (Pajak STNK Tahunan), 5-year plate renewal (Pajak 5 Tahunan), and driving licenses (SIM).
+
+### Zero-Telemetry, Offline-First Architecture
+Setelin contains no user analytics, no advertising SDKs, no cloud tracking, and no account requirements. The persistence layer operates strictly on an on-device SQLite database via Android Room. Your driving records, financial expenses, and maintenance history belong entirely to you.
+
+### Low-Overhead Engineering
+By avoiding heavy third-party dependencies, runtime 3D game engines, and unnecessary background polling, Setelin compiles to an optimized release binary of under 2 MB with sub-3% frame drop rates on 120Hz displays.
+
+---
+
+## Design System: Neon Cockpit
+
+The visual language of Setelin is inspired by aviation glass cockpits and digital automotive instrument clusters. It is tailored for high contrast and zero eye fatigue during low-light conditions (such as late-night garage maintenance or evening commutes).
+
+### Color Hierarchy
+
+| Token | Hex Value | Semantic Application |
 |---|---|---|
-| `bg` | `#060A10` | Deep cockpit background |
-| `bgTop` | `#0E2332` | Top atmospheric gradient |
-| `s1` | `#0C141D` | Instrument card surface |
-| `s2` | `#111C28` | Secondary interactive containers & buttons |
-| `s3` | `#1A2A3B` | Gauge tracks & progress bars |
-| `t1` | `#F2F8FC` | Primary readable text |
-| `t2` | `#9AB0C2` | Secondary meta text & descriptions |
-| `acc` | `#22D3EE` | Primary luminous cyan glow |
-| `acc2` | `#7C8CFF` | Electric indigo gradient termination |
-| `ok` | `#34D399` | Optimal status (Aman) |
-| `warn` | `#FBBF24` | Inspection required soon (Segera) |
-| `bad` | `#F87171` | Critical / overdue maintenance (Lewat) |
+| `bg` | `#060A10` | Deep cockpit void; canvas background |
+| `bgTop` | `#0E2332` | Subtle 300dp vertical atmospheric light falloff |
+| `s1` | `#0C141D` | Instrument card surfaces and structural containers |
+| `s2` | `#111C28` | Secondary interactive containers, inactive chips, icon buttons |
+| `s3` | `#1A2A3B` | Passive gauge tracks and progress bar backgrounds |
+| `t1` | `#F2F8FC` | Primary high-legibility telemetry text and headers |
+| `t2` | `#9AB0C2` | Supporting technical meta descriptions |
+| `t3` | `#5D7385` | Captions, units, and tertiary labels |
+| `acc` | `#22D3EE` | Primary luminous cyan glow; active states and accents |
+| `acc2` | `#7C8CFF` | Electric indigo; accent gradient termination |
+| `ink` | `#031820` | High-contrast glyphs and text rendered over cyan accents |
+| `ok` | `#34D399` | Optimal status indicator |
+| `warn` | `#FBBF24` | Inspection required soon indicator |
+| `bad` | `#F87171` | Critical inspection or overdue indicator |
+| `div` | `0x0FF2F8FC` | Subtle 6% opacity divider inside cards |
 
-Explore the design guidelines in [docs/DESIGN.md](docs/DESIGN.md) and the interactive visual guide at [art/panduan-ui.html](art/panduan-ui.html).
+### Typographic Discipline
+All typography is rendered using the variable **Manrope** font family. To maintain visual hierarchy without visual clutter, weights are strictly constrained to three values:
+* **Medium (500)**: Informational prose, explanatory notes, and micro-captions.
+* **SemiBold (600)**: Navigation items, table keys, and list item names.
+* **Bold (700)**: High-priority telemetry readouts, numeric metrics, and primary action buttons.
+* **Tabular Figures (`tnum`)**: All numeric readouts enforce monospaced figure widths to prevent layout shifting during telemetry animations.
+
+For the complete technical specification, refer to [docs/DESIGN.md](docs/DESIGN.md) and the interactive visual guide at [art/panduan-ui.html](art/panduan-ui.html).
 
 ---
 
-## 🏗️ Architecture & Structure
+## Technical Stack & Architecture
 
 ```
 id.cekendaraan.app
 ├── data/
 │   ├── Db.kt           # Room Database, Entities (Vehicle, Component, ServiceEvent), DAOs & Migrations
-│   ├── Catalog.kt      # Popular vehicle models & makes (Indonesia)
-│   ├── Seed.kt         # Component templates, intervals & presets
-│   ├── Prefs.kt        # SharedPreferences local configuration
-│   └── Reminder.kt     # WorkManager daily morning notifications
+│   ├── Catalog.kt      # Vehicle taxonomy, makes, and models
+│   ├── Seed.kt         # Component templates, intervals, and presets
+│   ├── Prefs.kt        # Local configuration and persistence
+│   └── Reminder.kt     # WorkManager daily maintenance notifications
 ├── domain/
-│   └── Due.kt          # Dual-axis health & remaining lifespan algorithm
+│   └── Due.kt          # Dual-axis health calculation and limit algorithms
 └── ui/
-    ├── theme/          # Neon Cockpit color tokens, gradients & Manrope typography
-    ├── CekKendaraanApp # State-based root navigation & modal coordinator
-    ├── HomeScreen      # Dashboard, instrument gauges & quick actions
-    ├── ComponentScreen # Component detail telemetry & interval editor
-    └── Components.kt   # Reusable atomic design components (Buttons, GaugeRing, ItemRow, etc.)
+    ├── theme/          # Neon Cockpit color tokens, gradients, and typography
+    ├── CekKendaraanApp # Root navigation controller and modal orchestrator
+    ├── HomeScreen      # Dashboard, instrument gauges, and quick actions
+    ├── ComponentScreen # Component detail telemetry and interval configuration
+    └── Components.kt   # Atomic design components (Buttons, GaugeRing, ItemRow, etc.)
 ```
 
-- **UI Framework**: Jetpack Compose (BOM 2024.12.01) with Material 3.
-- **Typography**: Variable Manrope (OFL licensed) with tabular numerals (`tnum`).
-- **Database**: SQLite via Android Room 2.6.1 + KSP.
-- **Target SDK**: Android 15 (API 35) | **Minimum SDK**: Android 8.0 (API 26).
+* **Target SDK**: Android 15 (API level 35)
+* **Minimum SDK**: Android 8.0 (API level 26)
+* **UI Layer**: Jetpack Compose (BOM 2024.12.01) with Material 3
+* **Local Persistence**: Android Room 2.6.1 with Kotlin Symbol Processing (KSP)
+* **Background Tasks**: AndroidX WorkManager 2.9.1
+* **Language Runtime**: Kotlin 2.0.21 on JVM 17
+* **Code Shrinking & Obfuscation**: ProGuard / R8 with Resource Shrinking enabled
 
 ---
 
-## 🚀 Building & Running
+## Building from Source
 
 ### Prerequisites
-- JDK 17 (e.g. OpenJDK 17)
-- Android SDK with Platform 35 and Build Tools installed
-- Git
+* Java Development Kit (JDK) 17
+* Android SDK (API 35 and Build Tools installed)
+* Git
 
-### Build Instructions
+### Step-by-Step Instructions
 
 1. **Clone the repository:**
    ```bash
@@ -107,37 +140,46 @@ id.cekendaraan.app
    cd Setelin
    ```
 
-2. **Configure your Android SDK path:**
-   Create a `local.properties` file in the root directory:
+2. **Configure SDK Location:**
+   Create a `local.properties` file in the project root:
    ```properties
-   sdk.dir=D:\\AndroidDev\\sdk
+   sdk.dir=/path/to/android/sdk
    ```
 
-3. **Build the Release APK:**
+3. **Compile Release Binary:**
    ```powershell
-   # On Windows (PowerShell)
+   # Windows PowerShell
    $env:JAVA_HOME = "D:\AndroidDev\jdk17"
    ./gradlew assembleRelease
    ```
 
-4. **Install on connected device via ADB:**
+4. **Deploy to Target Device:**
    ```bash
    adb install -r app/build/outputs/apk/release/app-release.apk
    ```
 
 ---
 
-## 🤝 Contributing
+## Contributing
 
-Contributions, bug reports, and suggestions are welcome!
-1. Fork the Project
-2. Create your Feature Branch (`git checkout -b feat/amazing-feature`)
-3. Commit your Changes using Conventional Commits (`git commit -m 'feat: add fuel logging sheet'`)
-4. Push to the Branch (`git push origin feat/amazing-feature`)
-5. Open a Pull Request
+Contributions, defect reports, and architecture enhancements are welcome.
+1. Fork the repository.
+2. Create your dedicated topic branch:
+   ```bash
+   git checkout -b feat/custom-export-module
+   ```
+3. Commit changes conforming to the Conventional Commits specification:
+   ```bash
+   git commit -m "feat(export): add local encrypted json backup routine"
+   ```
+4. Push your branch to GitHub:
+   ```bash
+   git push origin feat/custom-export-module
+   ```
+5. Open a Pull Request for review.
 
 ---
 
-## 📄 License
+## License
 
-This project is open-source. The Manrope font family is licensed under the SIL Open Font License (OFL) — see [FONT-LICENSE.txt](FONT-LICENSE.txt).
+This project is open-source under standard permissive terms. The bundled Manrope typeface is licensed under the SIL Open Font License (OFL) — see [FONT-LICENSE.txt](FONT-LICENSE.txt).
