@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "art-preview",
+      "runtimeExecutable": "python",
+      "runtimeArgs": ["-m", "http.server", "8765", "--bind", "127.0.0.1", "--directory", "C:\\Users\\Halim\\AppData\\Local\\Temp\\claude\\45dd544ad93de983\\781e2bda-28fc-4420-8dfe-196caca95767\\scratchpad"],
+      "port": 8765
+    }
+  ]
+}
